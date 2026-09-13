@@ -44,7 +44,9 @@ export async function commitDecision(
 
   const value: DecisionValue = {
     assetId: scenario.assetId,
-    replayHash: output.replayHash,
+    replayHash: output.replayHash.startsWith("0x")
+      ? output.replayHash
+      : `0x${output.replayHash}`,
     action: output.action,
     newLtvBps: actionToLtvBps(output.action),
     nonce,
