@@ -7,6 +7,7 @@ import {
   relayDecision,
   runReplay,
 } from "./api";
+import { CyberFly } from "./CyberFly";
 import { txExplorerUrl } from "./explorer";
 import {
   ACTION_LABELS,
@@ -184,17 +185,43 @@ export function App() {
 
   const lastCommit = latestEventOfType(timeline, "commit");
   const lastRelay = latestEventOfType(timeline, "relay");
+  const flowSteps = [
+    { label: "Attest", active: Boolean(state) },
+    { label: "Replay", active: Boolean(state) },
+    { label: "Commit", active: Boolean(writeback?.committed) },
+    {
+      label: "Write-back",
+      active: Boolean(lastRelay?.txHash || writeback?.rwaLiquidated),
+    },
+  ];
 
   return (
     <main className="shell">
       <header className="hero">
-        <p className="eyebrow">Counterfly</p>
-        <h1>Don&apos;t trust the appraiser — reproduce the fly.</h1>
-        <p className="lede">
-          A reproducible counterfactual-history engine for RWA risk, powered by a
-          fruit-fly connectome and Attestcoin-verified cross-chain data.
-        </p>
+        <div className="hero-copy">
+          <p className="eyebrow">Counterfly</p>
+          <h1>Don&apos;t trust the appraiser — reproduce the fly.</h1>
+          <p className="lede">
+            A reproducible counterfactual-history engine for RWA risk, powered
+            by a fruit-fly connectome and Attestcoin-verified cross-chain data.
+          </p>
+        </div>
+        <CyberFly action={state?.action ?? 0} />
       </header>
+
+      <section className="flow-strip" aria-label="Pipeline">
+        {flowSteps.map((step, index) => (
+          <div className="flow-step" key={step.label}>
+            <span className={`flow-node ${step.active ? "active" : ""}`}>
+              {index + 1}
+            </span>
+            <span className="flow-label">{step.label}</span>
+            {index < flowSteps.length - 1 ? (
+              <span className="flow-link" />
+            ) : null}
+          </div>
+        ))}
+      </section>
 
       <section className="controls">
         <div className="control-group">
