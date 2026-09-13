@@ -120,14 +120,19 @@ The project is built on the official [attestcoin-protocol-examples](https://gith
 
 ```text
 counterfly/
+├── package.json          # npm workspaces root
 ├── README.md
 ├── PRD.md
 ├── docs/
 │   └── TECHNICAL.md
-├── contracts/            # ASC and target-chain action contracts
-├── worker/               # Attestcoin read client + connectome replay engine
-├── dashboard/            # RWA / fly state viewer
-└── scripts/              # testnet deployment and demo scripts
+├── contracts/
+│   ├── contracts/        # CounterflyASC.sol, RwaAction.sol
+│   ├── scripts/          # deployment scripts
+│   └── test/             # Hardhat unit tests
+├── worker/
+│   ├── src/              # attest -> scenario -> replay -> commit orchestrator
+│   └── fly/              # Python connectome engine + data prepare script
+└── dashboard/            # Vite + React risk dashboard
 ```
 
 ---
@@ -146,12 +151,28 @@ npm install
 # 2. Configure RPCs for Sepolia and CC3 testnet
 cp .env.example .env
 
-# 3. Deploy the ASC to CC3 testnet
-npm run deploy:cc3
+# 3. Compile and test the contracts
+npm run compile -w @counterfly/contracts
+npm run test -w @counterfly/contracts
 
-# 4. Run the demo: verify a Sepolia event, replay it, and commit a decision
-npm run demo
+# 4. Run the offline demo (no keys or network required)
+npm run demo -w @counterfly/worker
+npm run demo -w @counterfly/worker -- --scenario=RATE_SHOCK
+
+# 5. Start the dashboard
+npm run dev -w @counterfly/dashboard
 ```
+
+For a real cross-chain run, deploy the ASC to CC3 testnet, set `PRIVATE_KEY`
+and `COUNTERFLY_ASC_ADDRESS` in `.env`, then run:
+
+```bash
+npm run deploy:cc3 -w @counterfly/contracts
+npm run run -w @counterfly/worker -- 0x<sepolia-tx-hash>
+```
+
+The default demo graph is a small deterministic pruned graph. To export the
+real `MaleCNS v1.0` connectome, see `worker/fly/prepare.py`.
 
 ---
 

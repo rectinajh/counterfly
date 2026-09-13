@@ -1,0 +1,170 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --panel: #14181e;
+  --line: #232a33;
+  --text: #e6edf3;
+  --muted: #8b98a5;
+  --accent: #6ee7b7;
+  --accent-2: #fbbf24;
+  font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+.hero h1 {
+  margin: 0 0 16px;
+  font-size: clamp(28px, 5vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 12px;
+}
+
+.lede {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin: 32px 0;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.panel {
+  position: relative;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.panel-head span {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+dl {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+dd.action {
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.badge {
+  position: absolute;
+  top: -12px;
+  right: 14px;
+  background: var(--accent-2);
+  color: #0b0d10;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.reproduce {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reproduce strong {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+code {
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

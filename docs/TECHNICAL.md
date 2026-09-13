@@ -275,13 +275,13 @@ Decision -> commitDecision on Counterfly ASC
 
 ```bash
 # deploy ASC to CC3 testnet
-npm run deploy:cc3
+npm run deploy:cc3 -w @counterfly/contracts
 
 # deploy a minimal Sepolia action contract for the writability demo
-npm run deploy:sepolia
+npm run deploy:sepolia -w @counterfly/contracts
 
 # run the end-to-end demo
-npm run demo
+npm run demo -w @counterfly/worker
 ```
 
 ## 10. Open questions

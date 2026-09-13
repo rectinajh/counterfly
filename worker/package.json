@@ -1,0 +1,22 @@
+{
+  "name": "@counterfly/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "demo": "tsx src/index.ts --demo",
+    "run": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "fly:prepare": "python3 fly/prepare.py --demo"
+  },
+  "dependencies": {
+    "@gluwa/usc-sdk": "^0.18.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}
