@@ -1,0 +1,14 @@
+node_modules
+.git
+.vercel
+.env
+.env.*
+worker/fly/data
+worker/fly/.venv
+**/__pycache__
+**/*.pyc
+contracts/artifacts
+contracts/cache
+contracts/typechain-types
+coverage
+dist
