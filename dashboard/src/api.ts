@@ -6,9 +6,14 @@ import type {
   WritebackStatus,
 } from "./types";
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  "http://localhost:8787";
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL as string | undefined
+) ?? (import.meta.env.DEV ? "http://localhost:8787" : "");
+
+function apiUrl(path: string): string {
+  const base = API_BASE.replace(/\/$/, "");
+  return `${base}${path}`;
+}
 
 export interface RunRequest {
   graph: GraphMode;
@@ -32,7 +37,7 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export async function runReplay(request: RunRequest): Promise<ReplayState> {
-  const response = await fetch(`${API_BASE}/api/run`, {
+  const response = await fetch(apiUrl("/api/run"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(request),
@@ -42,7 +47,7 @@ export async function runReplay(request: RunRequest): Promise<ReplayState> {
 }
 
 export async function getState(): Promise<ReplayState | null> {
-  const response = await fetch(`${API_BASE}/api/state`);
+  const response = await fetch(apiUrl("/api/state"));
 
   if (!response.ok) {
     throw new Error(`Could not read state (${response.status})`);
@@ -55,13 +60,13 @@ export async function getWriteback(
   assetId: string,
 ): Promise<WritebackStatus> {
   const response = await fetch(
-    `${API_BASE}/api/writeback?assetId=${encodeURIComponent(assetId)}`,
+    apiUrl(`/api/writeback?assetId=${encodeURIComponent(assetId)}`),
   );
   return readJson<WritebackStatus>(response);
 }
 
 export async function getTimeline(): Promise<TimelineEvent[]> {
-  const response = await fetch(`${API_BASE}/api/timeline`);
+  const response = await fetch(apiUrl("/api/timeline"));
   const body = await readJson<{ events: TimelineEvent[] }>(response);
   return body.events;
 }
@@ -71,7 +76,7 @@ export async function commitDecision(
   replayHash: string,
   action: number,
 ): Promise<{ txHash: string; newLtvBps: string }> {
-  const response = await fetch(`${API_BASE}/api/commit`, {
+  const response = await fetch(apiUrl("/api/commit"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ assetId, replayHash, action }),
@@ -82,7 +87,7 @@ export async function commitDecision(
 export async function relayDecision(
   assetId: string,
 ): Promise<{ txHash?: string; action: number; newLtvBps: string }> {
-  const response = await fetch(`${API_BASE}/api/relay`, {
+  const response = await fetch(apiUrl("/api/relay"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ assetId }),

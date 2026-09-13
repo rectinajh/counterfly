@@ -241,6 +241,12 @@ cross-chain write-back remain auditable as separate steps.
 Each transaction in the timeline and write-back panel is rendered as a
 clickable explorer link: CC3 testnet uses Blockscout and Sepolia uses Etherscan.
 
+For the public Vercel preview, the repo also provides `api/*` serverless
+functions backed by `lib/cloud-demo.ts`. They serve the deterministic demo
+brain only; `graph=full`, `/api/commit`, and `/api/relay` return explicit
+not-available errors so the cloud preview never pretends to have the real
+connectome or on-chain write-back.
+
 ## 4. Attestcoin integration details
 
 ### 4.1 Environments

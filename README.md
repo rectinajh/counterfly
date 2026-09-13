@@ -171,6 +171,16 @@ The dashboard runs the replay first, then exposes **Commit to CC3** and
 step by step. The event timeline turns each transaction into a clickable
 Blockscout or Etherscan link.
 
+### Public Vercel preview
+
+The dashboard is also deployed at
+[https://counterfly.vercel.app](https://counterfly.vercel.app).
+
+In the public preview, Vercel serves a deterministic **demo brain** replay
+through its serverless API, so the UI works without a local worker. The real
+`MaleCNS v1.0` brain and on-chain commit/relay are disabled in the cloud
+preview; run `npm run serve -w @counterfly/worker` locally for those paths.
+
 To replay on the **real MaleCNS v1.0 connectome** (166,700 neurons), set up the
 Python environment and export the Janelia data once:
 
