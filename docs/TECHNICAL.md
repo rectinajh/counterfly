@@ -204,6 +204,8 @@ mock. The worker exposes:
   it to the `CounterflyASC` on CC3.
 - `POST /api/relay` — reads the committed decision and calls `adjustLtv` or
   `requestLiquidation` on the Sepolia `RwaAction`.
+- `GET /api/timeline` — returns the in-memory `replay -> commit -> relay` event
+  timeline, including transaction hashes and their source chain.
 
 ```json
 {
@@ -235,6 +237,9 @@ overridden with `VITE_API_BASE_URL`.
 The dashboard has explicit **Commit to CC3** and **Relay to Sepolia** buttons.
 They call `/api/commit` and `/api/relay` so the replay, ASC commit, and
 cross-chain write-back remain auditable as separate steps.
+
+Each transaction in the timeline and write-back panel is rendered as a
+clickable explorer link: CC3 testnet uses Blockscout and Sepolia uses Etherscan.
 
 ## 4. Attestcoin integration details
 

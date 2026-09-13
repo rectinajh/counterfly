@@ -38,6 +38,30 @@ const REAL_EVENT = {
 
 let latest: unknown = null;
 
+type TimelineType = "replay" | "commit" | "relay";
+
+interface TimelineEvent {
+  id: string;
+  type: TimelineType;
+  timestamp: string;
+  assetId: string;
+  action: number;
+  graph: "demo" | "full";
+  txHash?: string;
+  chain?: "cc3" | "sepolia";
+  detail: string;
+}
+
+const timeline: TimelineEvent[] = [];
+
+function pushTimeline(event: Omit<TimelineEvent, "id" | "timestamp">) {
+  timeline.push({
+    ...event,
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function latestDecision() {
   if (!latest || typeof latest !== "object") {
     return null;
@@ -62,6 +86,16 @@ function latestDecision() {
     replayHash: candidate.replayHash,
     action: candidate.action,
   };
+}
+
+function currentGraph(): "demo" | "full" {
+  if (latest && typeof latest === "object") {
+    const mode = (latest as { mode?: unknown }).mode;
+    if (mode === "full") {
+      return "full";
+    }
+  }
+  return "demo";
 }
 
 function graphInfo(graph: "demo" | "full") {
@@ -121,6 +155,14 @@ async function handleRun(body: RunRequest) {
     timestamp: new Date().toISOString(),
   };
 
+  pushTimeline({
+    type: "replay",
+    assetId,
+    action: output.action,
+    graph,
+    detail: `${scenarioType} magnitude=${magnitude}`,
+  });
+
   return latest;
 }
 
@@ -141,6 +183,12 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(latest));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/timeline") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ events: timeline }));
       return;
     }
 
@@ -189,6 +237,16 @@ const server = createServer(async (req, res) => {
         action: typeof body.action === "number" ? body.action : decision.action,
       });
 
+      pushTimeline({
+        type: "commit",
+        assetId: body.assetId ?? decision.assetId,
+        action: typeof body.action === "number" ? body.action : decision.action,
+        graph: currentGraph(),
+        txHash: result.txHash,
+        chain: "cc3",
+        detail: `newLtvBps=${result.newLtvBps}`,
+      });
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(result));
       return;
@@ -209,6 +267,19 @@ const server = createServer(async (req, res) => {
       const body = JSON.parse(raw || "{}") as { assetId?: string };
 
       const result = await relayDecisionOnChain(body.assetId ?? decision.assetId);
+
+      pushTimeline({
+        type: "relay",
+        assetId: body.assetId ?? decision.assetId,
+        action: result.action,
+        graph: currentGraph(),
+        txHash: result.txHash,
+        chain: result.txHash ? "sepolia" : undefined,
+        detail: result.txHash
+          ? `newLtvBps=${result.newLtvBps}`
+          : "HOLD, no cross-chain action",
+      });
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(result));
       return;

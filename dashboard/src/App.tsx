@@ -2,16 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import {
   commitDecision,
   getState,
+  getTimeline,
   getWriteback,
   relayDecision,
   runReplay,
 } from "./api";
+import { txExplorerUrl } from "./explorer";
 import {
   ACTION_LABELS,
   SCENARIO_LABELS,
   type GraphMode,
   type ReplayState,
   type ScenarioType,
+  type TimelineEvent,
   type WritebackStatus,
 } from "./types";
 
@@ -42,6 +45,7 @@ export function App() {
     "commit" | "relay" | null
   >(null);
   const [writebackError, setWritebackError] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
 
   const refreshWriteback = useCallback(async (assetId: string) => {
     try {
@@ -51,6 +55,14 @@ export function App() {
     } catch (cause) {
       setWriteback(null);
       setWritebackError(cause instanceof Error ? cause.message : "Write-back read failed");
+    }
+  }, []);
+
+  const refreshTimeline = useCallback(async () => {
+    try {
+      setTimeline(await getTimeline());
+    } catch {
+      // Keep the last known timeline if the API is temporarily unavailable.
     }
   }, []);
 
@@ -67,13 +79,14 @@ export function App() {
         setState(result);
         setWriteback(null);
         void refreshWriteback(result.assetId);
+        void refreshTimeline();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unknown replay error");
       } finally {
         setLoading(false);
       }
     },
-    [refreshWriteback],
+    [refreshWriteback, refreshTimeline],
   );
 
   useEffect(() => {
@@ -91,6 +104,7 @@ export function App() {
           setScenario(saved.scenarioType);
           setMagnitude(saved.magnitude);
           setLoading(false);
+          void refreshTimeline();
           return;
         }
 
@@ -106,7 +120,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [execute]);
+  }, [execute, refreshTimeline]);
 
   const chooseScenario = (nextScenario: ScenarioType) => {
     setScenario(nextScenario);
@@ -135,6 +149,7 @@ export function App() {
     try {
       await commitDecision(state.assetId, state.replayHash, state.action);
       await refreshWriteback(state.assetId);
+      await refreshTimeline();
     } catch (cause) {
       setWritebackError(
         cause instanceof Error ? cause.message : "Commit failed",
@@ -156,6 +171,7 @@ export function App() {
     try {
       await relayDecision(state.assetId);
       await refreshWriteback(state.assetId);
+      await refreshTimeline();
     } catch (cause) {
       setWritebackError(
         cause instanceof Error ? cause.message : "Relay failed",
@@ -165,6 +181,9 @@ export function App() {
       setWritebackAction(null);
     }
   };
+
+  const lastCommit = latestEventOfType(timeline, "commit");
+  const lastRelay = latestEventOfType(timeline, "relay");
 
   return (
     <main className="shell">
@@ -304,19 +323,38 @@ export function App() {
               <div className="writeback-status">
                 <div className="status-row">
                   <span>ASC decision</span>
-                  <code>
-                    {writeback?.committed
-                      ? `committed ${shortHash(writeback.commitTx ?? "")}`
-                      : "not committed"}
-                  </code>
+                  {writeback?.committed && lastCommit?.txHash ? (
+                    <a
+                      href={txExplorerUrl("cc3", lastCommit.txHash)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      committed {shortHash(lastCommit.txHash)} ↗
+                    </a>
+                  ) : (
+                    <code>
+                      {writeback?.committed ? "committed" : "not committed"}
+                    </code>
+                  )}
                 </div>
                 <div className="status-row">
                   <span>Sepolia RWA</span>
-                  <code>
-                    {writeback?.rwaLiquidated
-                      ? "liquidated"
-                      : `LTV ${writeback?.rwaLtvBps ?? "—"} bps`}
-                  </code>
+                  <span className="status-value">
+                    <code>
+                      {writeback?.rwaLiquidated
+                        ? "liquidated"
+                        : `LTV ${writeback?.rwaLtvBps ?? "—"} bps`}
+                    </code>
+                    {lastRelay?.txHash ? (
+                      <a
+                        href={txExplorerUrl("sepolia", lastRelay.txHash)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {shortHash(lastRelay.txHash)} ↗
+                      </a>
+                    ) : null}
+                  </span>
                 </div>
               </div>
 
@@ -346,6 +384,56 @@ export function App() {
                 </button>
               </div>
             </div>
+          </section>
+
+          <section className="timeline">
+            <div className="panel-head">
+              <h2>5 · Event timeline</h2>
+              <span>Replay → Commit → Relay</span>
+            </div>
+
+            {timeline.length === 0 ? (
+              <p className="timeline-empty">No events recorded yet.</p>
+            ) : (
+              <ol className="timeline-list">
+                {timeline.map((event) => (
+                  <li className="timeline-item" key={event.id}>
+                    <span className={`timeline-dot ${event.type}`} />
+                    <div className="timeline-content">
+                      <div className="timeline-meta">
+                        <span className={`timeline-type ${event.type}`}>
+                          {event.type}
+                        </span>
+                        <time>
+                          {new Date(event.timestamp).toLocaleTimeString()}
+                        </time>
+                      </div>
+                      <div className="timeline-detail">
+                        <span>{event.detail}</span>
+                        <span className="muted">
+                          {ACTION_LABELS[event.action]} ·{" "}
+                          {event.graph === "full"
+                            ? "MaleCNS v1.0"
+                            : "Demo brain"}{" "}
+                          · {shortHash(event.assetId)}
+                        </span>
+                      </div>
+                      {event.txHash && event.chain ? (
+                        <a
+                          className="explorer-link"
+                          href={txExplorerUrl(event.chain, event.txHash)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View on{" "}
+                          {event.chain === "cc3" ? "Blockscout" : "Etherscan"} ↗
+                        </a>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section className="hashes">
@@ -411,4 +499,16 @@ function shortHash(hash: string): string {
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);
+}
+
+function latestEventOfType(
+  events: TimelineEvent[],
+  type: TimelineEvent["type"],
+): TimelineEvent | undefined {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index].type === type) {
+      return events[index];
+    }
+  }
+  return undefined;
 }

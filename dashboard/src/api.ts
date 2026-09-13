@@ -2,6 +2,7 @@ import type {
   GraphMode,
   ReplayState,
   ScenarioType,
+  TimelineEvent,
   WritebackStatus,
 } from "./types";
 
@@ -57,6 +58,12 @@ export async function getWriteback(
     `${API_BASE}/api/writeback?assetId=${encodeURIComponent(assetId)}`,
   );
   return readJson<WritebackStatus>(response);
+}
+
+export async function getTimeline(): Promise<TimelineEvent[]> {
+  const response = await fetch(`${API_BASE}/api/timeline`);
+  const body = await readJson<{ events: TimelineEvent[] }>(response);
+  return body.events;
 }
 
 export async function commitDecision(

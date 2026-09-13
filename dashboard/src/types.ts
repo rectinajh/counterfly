@@ -51,6 +51,20 @@ export interface WritebackStatus {
   error?: string;
 }
 
+export type TimelineType = "replay" | "commit" | "relay";
+
+export interface TimelineEvent {
+  id: string;
+  type: TimelineType;
+  timestamp: string;
+  assetId: string;
+  action: ActionCode;
+  graph: GraphMode;
+  txHash?: string;
+  chain?: "cc3" | "sepolia";
+  detail: string;
+}
+
 export const ACTION_LABELS: Record<ActionCode, string> = {
   0: "HOLD",
   1: "ADJUST LTV",

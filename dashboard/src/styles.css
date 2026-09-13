@@ -170,6 +170,26 @@ input[type="number"] {
   text-align: right;
 }
 
+.status-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.status-value a,
+.writeback-actions a,
+.timeline a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.status-value a:hover,
+.writeback-actions a:hover,
+.timeline a:hover {
+  text-decoration: underline;
+}
+
 .writeback-error {
   margin-top: 12px;
   padding: 10px 12px;
@@ -186,6 +206,121 @@ input[type="number"] {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 16px;
+}
+
+.timeline {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.timeline h2 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.timeline-empty {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
+.timeline-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+  position: relative;
+  z-index: 1;
+}
+
+.timeline-dot.replay {
+  background: #60a5fa;
+}
+
+.timeline-dot.commit {
+  background: #a78bfa;
+}
+
+.timeline-dot.relay {
+  background: var(--accent);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-type {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.timeline-meta time {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.timeline-detail .muted {
+  color: var(--muted);
+}
+
+.explorer-link {
+  align-self: flex-start;
+  font-size: 12px;
 }
 
 .grid {

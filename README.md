@@ -168,7 +168,8 @@ npm run dev -w @counterfly/dashboard
 
 The dashboard runs the replay first, then exposes **Commit to CC3** and
 **Relay to Sepolia** actions so the cross-chain write-back can be demonstrated
-step by step.
+step by step. The event timeline turns each transaction into a clickable
+Blockscout or Etherscan link.
 
 To replay on the **real MaleCNS v1.0 connectome** (166,700 neurons), set up the
 Python environment and export the Janelia data once:
