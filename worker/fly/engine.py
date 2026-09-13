@@ -193,6 +193,97 @@ def action_from_axis(axis: float, scenario: dict) -> int:
     return ACTION_LIQUIDATE
 
 
+def load_full_graph(spec: str) -> dict:
+    data_dir = Path(__file__).parent / "data"
+    if spec in ("full", "malecns_v1"):
+        npz_path = data_dir / "malecns_v1.npz"
+    else:
+        npz_path = Path(spec)
+
+    meta_path = npz_path.with_suffix(".meta.json")
+    if not npz_path.exists():
+        raise FileNotFoundError(
+            f"full graph not found: {npz_path}. "
+            "Run `python3 fly/prepare.py --full` first."
+        )
+    if not meta_path.exists():
+        raise FileNotFoundError(f"missing graph metadata: {meta_path}")
+
+    import numpy as np
+
+    data = np.load(npz_path, allow_pickle=False)
+    meta = json.loads(meta_path.read_text("utf-8"))
+
+    return {
+        "neuron_count": int(meta["neuron_count"]),
+        "pre_index": data["pre_index"],
+        "post_index": data["post_index"],
+        "norm_weight": data["norm_weight"],
+        "input_ids": data["input_ids"],
+        "output_ids": data["output_ids"],
+        "graph_hash": meta["graph_hash"],
+    }
+
+
+def run_full_replay(graph: dict, scenario: dict, steps: int = 64, seed: int = 0) -> dict:
+    import numpy as np
+
+    neuron_count = graph["neuron_count"]
+    pre_index = graph["pre_index"]
+    post_index = graph["post_index"]
+    norm_weight = graph["norm_weight"]
+    input_ids = graph["input_ids"]
+    output_ids = graph["output_ids"]
+
+    features = compute_features(scenario)
+    stimuli = interpolate(features, len(input_ids))
+    magnitude = float(scenario.get("counterfactual", {}).get("magnitude", 0.0))
+    if magnitude > 0:
+        stimuli = [s - magnitude for s in stimuli]
+    stimuli = np.asarray(stimuli, dtype=np.float32)
+
+    sensory = np.zeros(neuron_count, dtype=np.float32)
+    sensory[input_ids] = stimuli
+
+    voltages = np.zeros(neuron_count, dtype=np.float32)
+    relu = np.maximum(voltages, 0.0)
+    leak = np.float32(0.85)
+    tail = []
+
+    for _ in range(steps):
+        contributions = norm_weight * relu[pre_index]
+        recurrent = np.bincount(
+            post_index,
+            weights=contributions,
+            minlength=neuron_count,
+        ).astype(np.float32)
+        voltages = leak * voltages + np.tanh(recurrent + sensory)
+        relu = np.maximum(voltages, 0.0)
+        motor_activity = float(np.tanh(voltages[output_ids]).mean())
+        tail.append(motor_activity)
+
+    window = tail[-16:]
+    avg = float(np.mean(window))
+    direct_sensory = float(np.mean(stimuli))
+    axis = sigmoid(avg * 3.0 + direct_sensory * 1.5)
+    action = action_from_axis(axis, scenario)
+
+    scenario_for_hash = dict(scenario)
+    scenario_for_hash.pop("scenarioHash", None)
+    scenario_hash = sha256_hex(canonical(scenario_for_hash))
+    replay_hash = sha256_hex(
+        f"{graph['graph_hash']}:{scenario_hash}:{axis:.6f}:{action}"
+    )
+
+    return {
+        "graphHash": graph["graph_hash"],
+        "scenarioHash": scenario_hash,
+        "motorAxis": round(axis, 6),
+        "action": action,
+        "replayHash": replay_hash,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True)
@@ -202,34 +293,33 @@ def main() -> int:
     args = parser.parse_args()
 
     scenario = json.loads(Path(args.scenario).read_text("utf-8"))
-    graph = load_graph(args.graph)
 
-    features = compute_features(scenario)
-    stimuli = interpolate(features, len(graph["sensory"]))
-    magnitude = float(scenario.get("counterfactual", {}).get("magnitude", 0.0))
-    if magnitude > 0:
-        stimuli = [s - magnitude for s in stimuli]
-    axis = simulate(graph, stimuli, steps=args.steps)
-    action = action_from_axis(axis, scenario)
+    if args.graph == "demo":
+        graph = load_graph(args.graph)
+        features = compute_features(scenario)
+        stimuli = interpolate(features, len(graph["sensory"]))
+        magnitude = float(scenario.get("counterfactual", {}).get("magnitude", 0.0))
+        if magnitude > 0:
+            stimuli = [s - magnitude for s in stimuli]
+        axis = simulate(graph, stimuli, steps=args.steps)
+        action = action_from_axis(axis, scenario)
+        graph_hash = sha256_hex(canonical(graph))
+        scenario_for_hash = dict(scenario)
+        scenario_for_hash.pop("scenarioHash", None)
+        scenario_hash = sha256_hex(canonical(scenario_for_hash))
+        replay_hash = sha256_hex(f"{graph_hash}:{scenario_hash}:{axis:.6f}:{action}")
+        result = {
+            "graphHash": graph_hash,
+            "scenarioHash": scenario_hash,
+            "motorAxis": round(axis, 6),
+            "action": action,
+            "replayHash": replay_hash,
+        }
+    else:
+        graph = load_full_graph(args.graph)
+        result = run_full_replay(graph, scenario, steps=args.steps, seed=args.seed)
 
-    graph_hash = sha256_hex(canonical(graph))
-    scenario_for_hash = dict(scenario)
-    scenario_for_hash.pop("scenarioHash", None)
-    scenario_hash = sha256_hex(canonical(scenario_for_hash))
-    replay_hash = sha256_hex(f"{graph_hash}:{scenario_hash}:{axis:.6f}:{action}")
-
-    print(
-        json.dumps(
-            {
-                "graphHash": graph_hash,
-                "scenarioHash": scenario_hash,
-                "motorAxis": round(axis, 6),
-                "action": action,
-                "replayHash": replay_hash,
-            },
-            sort_keys=True,
-        )
-    )
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

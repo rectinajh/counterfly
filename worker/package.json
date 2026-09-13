@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "demo": "tsx src/index.ts --demo",
+    "demo:full": "tsx src/index.ts --demo --graph=full",
     "run": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
-    "fly:prepare": "python3 fly/prepare.py --demo"
+    "fly:prepare": "python3 fly/prepare.py --demo",
+    "prepare:full": "sh -c 'PY=fly/.venv/bin/python; [ -x \"$PY\" ] || PY=python3; \"$PY\" fly/prepare.py --full'"
   },
   "dependencies": {
     "@gluwa/usc-sdk": "^0.18.0",

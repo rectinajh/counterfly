@@ -237,14 +237,44 @@ The demo uses **Ethereum Sepolia** (`chainKey = 1`) because it matches the testn
 
 ## 5. Connectome simulation details
 
-- **Dataset**: `MaleCNS v1.0`.
-- **Scale**: ~166,700 neurons, ~25.6M connections, ~124M synaptic contacts.
-- **Input encoding**: history and counterfactual scenario are rendered into fixed-size sensory channels (visual-style pixel maps or current injections).
-- **Dynamics**: leaky integrate-and-fire or equivalent lightweight model with pinned parameters.
-- **Output decoding**: activity in a selected motor/output population is reduced to a low-dimensional axis and mapped to the action set.
-- **Determinism**: graph version, parameters, seed, and dependency versions are all pinned.
+Counterfly supports two replay substrates:
 
-The pruned demo graph is a faithful, documented subgraph; full-graph replay is available for offline audit.
+- **Demo pruned graph** — 512 neurons / 2,048 edges, generated deterministically,
+  for fast offline demos.
+- **Real MaleCNS v1.0 graph** — 166,700 neurons / 25,582,938 directed
+  connections, imported from the Janelia flat-connectome tables.
+
+### 5.1 Real data import
+
+`worker/fly/prepare.py --full` downloads three CC-BY source files from the
+Janelia GCS bucket, verifies their SHA-256 digests, and exports a compact numpy
+graph:
+
+- `annotations.feather` — neuron `bodyId`, `superclass`, `type`, `status`.
+- `neurotransmitters.feather` — per-neuron neurotransmitter predictions.
+- `edges.feather` — `body_pre`, `body_post`, and `weight` (synapse count).
+
+Nodes are retained when they have an assigned `superclass` and are not explicit
+Glia. Input neurons are the sensory/visual superclasses; output neurons are the
+descending, motor, and efferent superclasses.
+
+### 5.2 Dynamics
+
+- **Normalization**: each edge weight is `weight / sqrt(total incoming synaptic
+  weight)` for its target.
+- **Update**: `v = leak * v + tanh(recurrent + sensory)`, with `leak = 0.85`.
+- **Recurrence**: a vectorized `bincount` matvec over `post_index`.
+- **Readout**: mean `tanh(v[output_ids])`, combined with a direct sensory term,
+  then mapped to the action set.
+- **Determinism**: the prepared graph carries a `graph_hash` in its metadata;
+  scenario hashing and a fixed seed make each replay reproducible.
+
+### 5.3 Honest limitation
+
+The mapping from abstract RWA financial features to sensory neurons is an
+engineering choice, not a biologically validated interface. The real-data path
+is a reproducible stress-test substrate, not a claim that the connectome
+"understands" finance.
 
 ## 6. Data model and contract interfaces
 

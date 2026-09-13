@@ -163,6 +163,16 @@ npm run demo -w @counterfly/worker -- --scenario=RATE_SHOCK
 npm run dev -w @counterfly/dashboard
 ```
 
+To replay on the **real MaleCNS v1.0 connectome** (166,700 neurons), set up the
+Python environment and export the Janelia data once:
+
+```bash
+python3 -m venv worker/fly/.venv
+worker/fly/.venv/bin/pip install numpy pyarrow pandas
+npm run prepare:full -w @counterfly/worker
+npm run demo:full -w @counterfly/worker
+```
+
 For a real cross-chain run, deploy the ASC to CC3 testnet, set `PRIVATE_KEY`
 and `COUNTERFLY_ASC_ADDRESS` in `.env`, then run:
 

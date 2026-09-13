@@ -19,6 +19,7 @@ async function main() {
   const nonce = nonceArg ? BigInt(nonceArg.split("=")[1]) : 0n;
   const scenarioType =
     args.find((a) => a.startsWith("--scenario="))?.split("=")[1] ?? "BASE_REPLAY";
+  const graphArg = args.find((a) => a.startsWith("--graph="))?.split("=")[1] ?? "demo";
 
   const counterfactual: Counterfactual =
     scenarioType === "RATE_SHOCK"
@@ -40,7 +41,7 @@ async function main() {
 
   const assetId = assetIdFromSourceEvent(verified);
   const scenario = buildScenario({ assetId, sourceEvent: verified, counterfactual });
-  const output = await runFly(scenario, 0, "demo");
+  const output = await runFly(scenario, 0, graphArg);
   scenario.scenarioHash = output.scenarioHash;
 
   console.log(JSON.stringify({ assetId, scenario, output }, null, 2));
