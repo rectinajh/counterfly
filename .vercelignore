@@ -12,3 +12,6 @@ contracts/cache
 contracts/typechain-types
 coverage
 dist
+docs/Counterfly-Demo.mp4
+docs/video-assets/capture
+docs/Counterfly-Deck.pdf

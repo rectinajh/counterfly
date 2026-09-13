@@ -1,5 +1,6 @@
 import type {
   GraphMode,
+  PipelineCapabilities,
   ReplayState,
   ScenarioType,
   TimelineEvent,
@@ -44,6 +45,11 @@ export async function runReplay(request: RunRequest): Promise<ReplayState> {
   });
 
   return readJson<ReplayState>(response);
+}
+
+export async function getCapabilities(): Promise<PipelineCapabilities> {
+  const response = await fetch(apiUrl("/api/capabilities"));
+  return readJson<PipelineCapabilities>(response);
 }
 
 export async function getState(): Promise<ReplayState | null> {

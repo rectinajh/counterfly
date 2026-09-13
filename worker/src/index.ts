@@ -1,20 +1,14 @@
 import { config } from "./config";
-import { verifySepoliaEvent, type VerifiedEvent } from "./attest";
-import { assetIdFromSourceEvent, buildScenario, type Counterfactual } from "./scenario";
-import { runFly } from "./flyRunner";
+import { verifySepoliaEvent } from "./attest";
+import type { Counterfactual } from "./scenario";
+import { runPipeline } from "./pipeline";
 import { commitDecision } from "./commit";
-
-const DEMO_EVENT: VerifiedEvent = {
-  txHash: `0x${"a".repeat(64)}`,
-  blockNumber: 12345678,
-  chainKey: 1,
-  eventType: "PAYMENT",
-};
+import { ensureScenarioOnAsc } from "./ascSubmit";
 
 async function main() {
   const args = process.argv.slice(2);
   const isDemo = args.includes("--demo") || config.demo;
-  const txArg = args.find((a) => a.startsWith("0x"));
+  const txArg = args.find((a) => a.startsWith("0x") && a.length === 66);
   const nonceArg = args.find((a) => a.startsWith("--nonce="));
   const nonce = nonceArg ? BigInt(nonceArg.split("=")[1]) : 0n;
   const scenarioType =
@@ -35,30 +29,25 @@ async function main() {
     horizon: 12,
   };
 
-  let verified: VerifiedEvent;
-  if (isDemo) {
-    verified = DEMO_EVENT;
-    console.log("Demo mode: using a synthetic Sepolia payment event.");
-  } else {
-    if (!txArg) {
-      throw new Error(
-        "Usage: npm run run -- 0x<sepolia-tx-hash> [--scenario=BASE_REPLAY|RATE_SHOCK]",
-      );
-    }
-    verified = await verifySepoliaEvent(txArg);
+  if (!isDemo && txArg) {
+    await verifySepoliaEvent(txArg);
+    console.log(`Attestcoin verified source tx ${txArg}`);
   }
 
-  const assetId = assetIdFromSourceEvent(verified);
-  const scenario = buildScenario({ assetId, sourceEvent: verified, counterfactual });
-  const output = await runFly(scenario, 0, graphArg);
-  scenario.scenarioHash = output.scenarioHash;
+  const result = await runPipeline({
+    graph: graphArg as "demo" | "full",
+    counterfactual,
+    seed: 0,
+    attest: !isDemo || graphArg === "full",
+  });
 
-  console.log(JSON.stringify({ assetId, scenario, output }, null, 2));
+  console.log(JSON.stringify({ assetId: result.assetId, scenario: result.scenario, output: result.output, attestation: result.attestation }, null, 2));
 
   if (isDemo) {
     console.log("Demo mode: skipping on-chain commit.");
   } else {
-    const txHash = await commitDecision(scenario, output, nonce);
+    await ensureScenarioOnAsc(result.scenario);
+    const txHash = await commitDecision(result.scenario, result.output, nonce);
     if (txHash) {
       console.log(`Decision committed: ${txHash}`);
     }

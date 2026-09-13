@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   commitDecision,
+  getCapabilities,
   getState,
   getTimeline,
   getWriteback,
@@ -9,10 +10,13 @@ import {
 } from "./api";
 import { CyberFly } from "./CyberFly";
 import { txExplorerUrl } from "./explorer";
+import { FLOW_STEPS, QUICK_TIPS, type FlowStepId } from "./flowSteps";
 import {
   ACTION_LABELS,
   SCENARIO_LABELS,
+  SCENARIO_RWA_HINT,
   type GraphMode,
+  type PipelineCapabilities,
   type ReplayState,
   type ScenarioType,
   type TimelineEvent,
@@ -33,6 +37,12 @@ const DEFAULT_MAGNITUDE: Record<ScenarioType, number> = {
   HAZARD: 0.8,
 };
 
+const TIPS_KEY = "counterfly-tips-dismissed";
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function App() {
   const [state, setState] = useState<ReplayState | null>(null);
   const [graph, setGraph] = useState<GraphMode>("demo");
@@ -47,6 +57,18 @@ export function App() {
   >(null);
   const [writebackError, setWritebackError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [capabilities, setCapabilities] = useState<PipelineCapabilities | null>(
+    null,
+  );
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [currentFlowStep, setCurrentFlowStep] = useState<FlowStepId | null>(
+    null,
+  );
+  const [guidedRunning, setGuidedRunning] = useState(false);
+  const [guidedStatus, setGuidedStatus] = useState<string | null>(null);
+  const [tipsOpen, setTipsOpen] = useState(
+    () => sessionStorage.getItem(TIPS_KEY) !== "1",
+  );
 
   const refreshWriteback = useCallback(async (assetId: string) => {
     try {
@@ -78,11 +100,16 @@ export function App() {
           magnitude: nextMagnitude,
         });
         setState(result);
+        setGraph(result.mode);
+        setScenario(result.scenarioType);
+        setMagnitude(result.magnitude);
         setWriteback(null);
         void refreshWriteback(result.assetId);
         void refreshTimeline();
+        return result;
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unknown replay error");
+        throw cause;
       } finally {
         setLoading(false);
       }
@@ -93,23 +120,22 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
-    getState()
-      .then((saved) => {
+    Promise.all([getCapabilities(), getState()])
+      .then(([caps, saved]) => {
         if (cancelled) {
           return;
         }
-
+        setCapabilities(caps);
         if (saved) {
           setState(saved);
           setGraph(saved.mode);
           setScenario(saved.scenarioType);
           setMagnitude(saved.magnitude);
-          setLoading(false);
+          setSessionStarted(true);
+          void refreshWriteback(saved.assetId);
           void refreshTimeline();
-          return;
         }
-
-        return execute("demo", "BASE_REPLAY", 0);
+        setLoading(false);
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
@@ -121,7 +147,14 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [execute, refreshTimeline]);
+  }, [refreshTimeline, refreshWriteback]);
+
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
   const chooseScenario = (nextScenario: ScenarioType) => {
     setScenario(nextScenario);
@@ -159,6 +192,7 @@ export function App() {
       setWritebackError(
         cause instanceof Error ? cause.message : "Commit failed",
       );
+      throw cause;
     } finally {
       setWritebackLoading(false);
       setWritebackAction(null);
@@ -181,26 +215,142 @@ export function App() {
       setWritebackError(
         cause instanceof Error ? cause.message : "Relay failed",
       );
+      throw cause;
     } finally {
       setWritebackLoading(false);
       setWritebackAction(null);
     }
   };
 
+  const startSession = () => {
+    setSessionStarted(true);
+    setGuidedStatus(null);
+  };
+
+  const runGuidedDemo = async () => {
+    setSessionStarted(true);
+    setGuidedRunning(true);
+    setGuidedStatus(null);
+    setWritebackError(null);
+
+    const canFull =
+      capabilities?.features.onChainCommit && capabilities?.features.malecnsFull;
+
+    try {
+      setCurrentFlowStep("attest");
+      setGuidedStatus("Steps 1–2: Attestcoin verify + MaleCNS replay…");
+      const replay = canFull
+        ? await execute("full", "RATE_SHOCK", 0.8)
+        : await execute("demo", "RATE_SHOCK", 0.2);
+
+      if (!replay) {
+        throw new Error("Replay did not return a result.");
+      }
+
+      setCurrentFlowStep("replay");
+      scrollToSection("section-pipeline");
+      await delay(2500);
+
+      if (!capabilities?.features.onChainCommit) {
+        setGuidedStatus(
+          capabilities?.message ??
+            "Replay complete. Connect the full worker API for Commit and Relay.",
+        );
+        setCurrentFlowStep(null);
+        return;
+      }
+
+      setCurrentFlowStep("commit");
+      setGuidedStatus("Step 3: Commit decision to Counterfly ASC on CC3…");
+      scrollToSection("section-writeback");
+      await delay(800);
+      setWritebackLoading(true);
+      setWritebackAction("commit");
+      try {
+        await commitDecision(replay.assetId, replay.replayHash, replay.action);
+        await refreshWriteback(replay.assetId);
+        await refreshTimeline();
+      } finally {
+        setWritebackLoading(false);
+        setWritebackAction(null);
+      }
+
+      setCurrentFlowStep("writeback");
+      setGuidedStatus("Step 4: Relay cross-chain instruction to Sepolia…");
+      await delay(800);
+      setWritebackLoading(true);
+      setWritebackAction("relay");
+      try {
+        await relayDecision(replay.assetId);
+        await refreshWriteback(replay.assetId);
+        await refreshTimeline();
+      } finally {
+        setWritebackLoading(false);
+        setWritebackAction(null);
+      }
+
+      scrollToSection("section-timeline");
+      setGuidedStatus(
+        "Guided demo complete — open Blockscout / Etherscan links in the timeline.",
+      );
+      setCurrentFlowStep(null);
+    } catch (cause) {
+      setGuidedStatus(
+        cause instanceof Error ? cause.message : "Guided demo stopped.",
+      );
+      setCurrentFlowStep(null);
+    } finally {
+      setGuidedRunning(false);
+    }
+  };
+
   const lastCommit = latestEventOfType(timeline, "commit");
   const lastRelay = latestEventOfType(timeline, "relay");
-  const flowSteps = [
-    { label: "Attest", active: Boolean(state) },
-    { label: "Replay", active: Boolean(state) },
-    { label: "Commit", active: Boolean(writeback?.committed) },
-    {
-      label: "Write-back",
-      active: Boolean(lastRelay?.txHash || writeback?.rwaLiquidated),
-    },
-  ];
+  const attested = Boolean(
+    state?.attestation?.verified === true ||
+      (state?.attestation?.skipped && state?.mode === "demo"),
+  );
+
+  const flowActive: Record<FlowStepId, boolean> = {
+    attest: attested,
+    replay: Boolean(state),
+    commit: Boolean(writeback?.committed),
+    writeback: Boolean(lastRelay?.txHash || writeback?.rwaLiquidated),
+  };
+
+  const dismissTips = () => {
+    sessionStorage.setItem(TIPS_KEY, "1");
+    setTipsOpen(false);
+  };
+
+  const pipelineLabel =
+    capabilities?.pipeline === "full"
+      ? "Full pipeline"
+      : capabilities?.pipeline === "partial"
+        ? "Partial pipeline"
+        : "Replay-only";
 
   return (
     <main className="shell">
+      {capabilities ? (
+        <div
+          className={`backend-banner backend-${capabilities.pipeline}`}
+          role="status"
+        >
+          <strong>{pipelineLabel}</strong>
+          <span>
+            {capabilities.pipeline === "full"
+              ? "Attestcoin verify · MaleCNS · CC3 commit · Sepolia relay"
+              : capabilities.pipeline === "partial"
+                ? "Live Attest + replay; commit/relay need worker keys on the API host."
+                : "Deterministic demo replay only — set Vercel COUNTERFLY_API_ORIGIN to your worker :8786."}
+          </span>
+          {capabilities.message ? (
+            <span className="backend-detail">{capabilities.message}</span>
+          ) : null}
+        </div>
+      ) : null}
+
       <header className="hero">
         <div className="hero-copy">
           <img className="brand-logo" src="/logo.png" alt="Counterfly logo" />
@@ -214,88 +364,174 @@ export function App() {
         <CyberFly action={state?.action ?? 0} />
       </header>
 
-      <section className="flow-strip" aria-label="Pipeline">
-        {flowSteps.map((step, index) => (
-          <div className="flow-step" key={step.label}>
-            <span className={`flow-node ${step.active ? "active" : ""}`}>
-              {index + 1}
-            </span>
-            <span className="flow-label">{step.label}</span>
-            {index < flowSteps.length - 1 ? (
-              <span className="flow-link" />
-            ) : null}
-          </div>
-        ))}
-      </section>
-
-      <section className="controls">
-        <div className="control-group">
-          <span className="control-label">Brain</span>
-          <div className="segmented">
-            <button
-              className={graph === "demo" ? "active" : ""}
-              onClick={() => chooseGraph("demo")}
-              disabled={loading}
-            >
-              Demo brain
-            </button>
-            <button
-              className={graph === "full" ? "active" : ""}
-              onClick={() => chooseGraph("full")}
-              disabled={loading}
-            >
-              MaleCNS v1.0
-            </button>
-          </div>
-        </div>
-
-        <div className="control-group">
-          <span className="control-label">Counterfactual</span>
-          <div className="segmented">
-            {SCENARIOS.map((item) => (
-              <button
-                key={item}
-                className={scenario === item ? "active" : ""}
-                onClick={() => chooseScenario(item)}
-                disabled={loading}
-              >
-                {SCENARIO_LABELS[item]}
-              </button>
+      {tipsOpen ? (
+        <aside className="tips-banner" aria-label="Quick tips">
+          <div className="tips-copy">
+            {QUICK_TIPS.map((tip) => (
+              <p key={tip}>{tip}</p>
             ))}
           </div>
-        </div>
-
-        <div className="control-group">
-          <label className="control-label" htmlFor="magnitude">
-            Magnitude
-          </label>
-          <input
-            id="magnitude"
-            type="number"
-            min="-1"
-            max="1"
-            step="0.05"
-            value={magnitude}
-            onChange={(event) => setMagnitude(Number(event.target.value))}
-            disabled={loading}
-          />
-          <button className="run" onClick={submit} disabled={loading}>
-            {loading ? "Replaying…" : "Run replay"}
+          <button type="button" className="tips-dismiss" onClick={dismissTips}>
+            Got it
           </button>
-        </div>
+        </aside>
+      ) : null}
 
-        <div className="control-group recommended-group">
-          <button
-            className="recommended"
-            onClick={runRecommended}
-            disabled={loading}
-          >
-            {loading
-              ? "Running…"
-              : "Recommended demo · MaleCNS v1.0 · RATE_SHOCK 0.8 → LIQUIDATE"}
-          </button>
-        </div>
+      <section className="flow-strip" aria-label="Pipeline">
+        {FLOW_STEPS.map((step, index) => {
+          const isCurrent = currentFlowStep === step.id;
+          return (
+            <button
+              type="button"
+              key={step.id}
+              className={`flow-step flow-step-btn ${isCurrent ? "current" : ""} ${
+                flowActive[step.id] ? "done" : ""
+              }`}
+              onClick={() => {
+                setCurrentFlowStep(step.id);
+                scrollToSection(step.sectionId);
+              }}
+              title={step.hint}
+            >
+              <span
+                className={`flow-node ${flowActive[step.id] || isCurrent ? "active" : ""}`}
+              >
+                {index + 1}
+              </span>
+              <span className="flow-label">{step.label}</span>
+              {index < FLOW_STEPS.length - 1 ? (
+                <span className="flow-link" aria-hidden />
+              ) : null}
+            </button>
+          );
+        })}
       </section>
+
+      {currentFlowStep ? (
+        <p className="flow-hint">
+          {FLOW_STEPS.find((s) => s.id === currentFlowStep)?.hint}
+        </p>
+      ) : null}
+
+      {guidedStatus ? (
+        <p className="guided-status" role="status">
+          {guidedStatus}
+        </p>
+      ) : null}
+
+      {!sessionStarted && !loading ? (
+        <section className="start-panel">
+          <h2>Interactive demo</h2>
+          <p>
+            Walk through Attestcoin readability, connectome replay, ASC commit,
+            and Sepolia write-back — or explore scenarios manually.
+          </p>
+          <div className="start-actions">
+            <button
+              type="button"
+              className="run guided-primary"
+              onClick={() => void runGuidedDemo()}
+              disabled={guidedRunning}
+            >
+              {guidedRunning ? "Guided demo running…" : "Guided demo (4 steps)"}
+            </button>
+            <button
+              type="button"
+              className="guided-secondary"
+              onClick={startSession}
+              disabled={guidedRunning}
+            >
+              Start manual demo
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {sessionStarted ? (
+        <section className="controls">
+          <div className="control-group">
+            <span className="control-label">Brain</span>
+            <div className="segmented">
+              <button
+                className={graph === "demo" ? "active" : ""}
+                onClick={() => chooseGraph("demo")}
+                disabled={loading || guidedRunning}
+              >
+                Demo brain
+              </button>
+              <button
+                className={graph === "full" ? "active" : ""}
+                onClick={() => chooseGraph("full")}
+                disabled={loading || guidedRunning}
+                title={
+                  capabilities?.features.malecnsFull
+                    ? undefined
+                    : "Requires worker with MaleCNS data prepared"
+                }
+              >
+                MaleCNS v1.0
+              </button>
+            </div>
+          </div>
+
+          <div className="control-group">
+            <span className="control-label">Counterfactual</span>
+            <div className="segmented">
+              {SCENARIOS.map((item) => (
+                <button
+                  key={item}
+                  className={scenario === item ? "active" : ""}
+                  onClick={() => chooseScenario(item)}
+                  disabled={loading || guidedRunning}
+                  title={SCENARIO_RWA_HINT[item]}
+                >
+                  {SCENARIO_LABELS[item]}
+                </button>
+              ))}
+            </div>
+            <p className="scenario-hint">{SCENARIO_RWA_HINT[scenario]}</p>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label" htmlFor="magnitude">
+              Magnitude
+            </label>
+            <input
+              id="magnitude"
+              type="number"
+              min="-1"
+              max="1"
+              step="0.05"
+              value={magnitude}
+              onChange={(event) => setMagnitude(Number(event.target.value))}
+              disabled={loading || guidedRunning}
+            />
+            <button className="run" onClick={submit} disabled={loading || guidedRunning}>
+              {loading ? "Replaying…" : "Run replay"}
+            </button>
+          </div>
+
+          <div className="control-group recommended-group">
+            <button
+              className="recommended"
+              onClick={runRecommended}
+              disabled={loading || guidedRunning}
+            >
+              {loading
+                ? "Running…"
+                : "Recommended · MaleCNS v1.0 · RATE_SHOCK 0.8"}
+            </button>
+            <button
+              type="button"
+              className="guided-inline"
+              onClick={() => void runGuidedDemo()}
+              disabled={loading || guidedRunning}
+            >
+              {guidedRunning ? "Guided…" : "Re-run guided demo"}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {error ? (
         <section className="error">
@@ -312,15 +548,27 @@ export function App() {
 
       {state ? (
         <>
-          <section className="grid">
+          <section className="grid" id="section-pipeline">
             <Panel
               title="1 · Attest"
               subtitle="Attestcoin ProofBuilder + BlockProver"
               items={[
+                [
+                  "Verify",
+                  state.attestation?.verified
+                    ? `verified (header ${state.attestation.headerNumber ?? "—"})`
+                    : state.attestation?.skipped
+                      ? "demo tx (skipped)"
+                      : state.attestation?.error ?? "pending",
+                ],
                 ["Payment tx", shortHash(state.sourceEvent.txHash)],
                 ["Sepolia block", String(state.sourceEvent.blockNumber)],
+                ["RWA case", state.rwaTitle ?? "—"],
                 ["Brain", state.mode === "full" ? "MaleCNS v1.0" : "Demo brain"],
               ]}
+              highlight={
+                state.attestation?.verified ? "Attestcoin OK" : undefined
+              }
             />
 
             <Panel
@@ -357,7 +605,7 @@ export function App() {
             />
           </section>
 
-          <section className="writeback">
+          <section className="writeback" id="section-writeback">
             <div className="panel-head">
               <h2>4 · Write-back</h2>
               <span>CC3 ASC → Sepolia RwaAction</span>
@@ -406,20 +654,32 @@ export function App() {
                 <div className="writeback-error">{writebackError}</div>
               ) : null}
 
+              {!capabilities?.features.onChainCommit ? (
+                <p className="writeback-note">
+                  Commit and relay require the full worker API with{" "}
+                  <code>PRIVATE_KEY</code> and ASC addresses configured.
+                </p>
+              ) : null}
+
               <div className="writeback-actions">
                 <button
                   className="run"
-                  onClick={commit}
-                  disabled={writebackLoading || !state}
+                  onClick={() => void commit()}
+                  disabled={
+                    writebackLoading || !state || !capabilities?.features.onChainCommit
+                  }
                 >
                   {writebackAction === "commit"
                     ? "Committing…"
                     : "Commit to CC3"}
                 </button>
                 <button
-                  onClick={relay}
+                  onClick={() => void relay()}
                   disabled={
-                    writebackLoading || !writeback?.committed || !state
+                    writebackLoading ||
+                    !writeback?.committed ||
+                    !state ||
+                    !capabilities?.features.onChainRelay
                   }
                 >
                   {writebackAction === "relay"
@@ -430,14 +690,16 @@ export function App() {
             </div>
           </section>
 
-          <section className="timeline">
+          <section className="timeline" id="section-timeline">
             <div className="panel-head">
               <h2>5 · Event timeline</h2>
-              <span>Replay → Commit → Relay</span>
+              <span>Attest → Replay → Commit → Relay</span>
             </div>
 
             {timeline.length === 0 ? (
-              <p className="timeline-empty">No events recorded yet.</p>
+              <p className="timeline-empty">
+                No events yet — run the guided demo or commit manually.
+              </p>
             ) : (
               <ol className="timeline-list">
                 {timeline.map((event) => (
@@ -498,12 +760,18 @@ export function App() {
           <footer className="reproduce">
             <strong>Reproduce</strong>
             <span>
-              Same graph + same scenario + same seed = same decision. Run{" "}
-              <code>npm run demo -w @counterfly/worker</code> or hit{" "}
-              <code>/api/run</code> with the same parameters.
+              Same graph + same scenario + same seed = same decision. See{" "}
+              <code>docs/REPRODUCE.md</code>, run{" "}
+              <code>npm run demo -w @counterfly/worker</code>, or POST{" "}
+              <code>/api/run</code> with identical parameters. Live Attestcoin
+              verify: <code>GET /api/attest?txHash=0x…</code>.
             </span>
           </footer>
         </>
+      ) : sessionStarted && !loading ? (
+        <section className="start-panel start-panel-compact">
+          <p>Choose a scenario above or run the guided demo to populate results.</p>
+        </section>
       ) : null}
     </main>
   );

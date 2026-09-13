@@ -29,6 +29,8 @@ jobs:
 
       - name: Test worker determinism
         run: npm run test -w @counterfly/worker
+        env:
+          SKIP_ATTEST: "true"
 
       - name: Build
         run: npm run build

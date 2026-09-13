@@ -12,12 +12,23 @@ export interface SourceEvent {
   eventType: string;
 }
 
+export interface AttestationStatus {
+  verified: boolean;
+  skipped?: boolean;
+  headerNumber?: number;
+  error?: string;
+}
+
 export interface ReplayState {
   mode: GraphMode;
   scenarioType: ScenarioType;
   magnitude: number;
   assetId: string;
   sourceEvent: SourceEvent;
+  attestation?: AttestationStatus;
+  rwaVertical?: string;
+  rwaTitle?: string;
+  rwaDescription?: string;
   graphHash: string;
   neuronCount: number;
   edgeCount: number;
@@ -51,7 +62,7 @@ export interface WritebackStatus {
   error?: string;
 }
 
-export type TimelineType = "replay" | "commit" | "relay";
+export type TimelineType = "attest" | "replay" | "commit" | "relay";
 
 export interface TimelineEvent {
   id: string;
@@ -73,8 +84,29 @@ export const ACTION_LABELS: Record<ActionCode, string> = {
 };
 
 export const SCENARIO_LABELS: Record<ScenarioType, string> = {
-  BASE_REPLAY: "Base replay",
-  RATE_SHOCK: "Rate shock",
-  MISSED_PAYMENT: "Missed payment",
-  HAZARD: "Hazard",
+  BASE_REPLAY: "Base replay · invoice",
+  RATE_SHOCK: "Rate shock · solar",
+  MISSED_PAYMENT: "Missed payment · invoice",
+  HAZARD: "Hazard · parametric",
+};
+
+export type PipelineMode = "full" | "partial" | "replay-only";
+
+export interface PipelineCapabilities {
+  source: "worker" | "cloud-fallback";
+  pipeline: PipelineMode;
+  features: {
+    liveAttest: boolean;
+    malecnsFull: boolean;
+    onChainCommit: boolean;
+    onChainRelay: boolean;
+  };
+  message?: string;
+}
+
+export const SCENARIO_RWA_HINT: Record<ScenarioType, string> = {
+  BASE_REPLAY: "Receivables financing with steady attested payments.",
+  RATE_SHOCK: "Solar lease revenue stress under a funding-rate shock.",
+  MISSED_PAYMENT: "Late invoice stream with a missed-installment counterfactual.",
+  HAZARD: "Parametric cover triggered from attested hazard history.",
 };

@@ -232,7 +232,7 @@ Primary preview: [https://counterfly.vercel.app](https://counterfly.vercel.app).
 
 Optional self-hosted worker (full Attest + Python MaleCNS): deploy with `deploy/counterfly-worker.service` on a Python-capable host; point Vercel `COUNTERFLY_API_ORIGIN` at `http://<host>:8786`. The IP fallback in older docs is **best-effort only** — prefer your own worker URL.
 
-The dashboard has a **Recommended demo** button that runs the full
+The dashboard opens with **Guided demo (4 steps)** or manual controls — no silent auto-replay on first visit. A **backend status banner** shows Full / Partial / Replay-only pipeline mode. The **Recommended demo** button runs the full
 `MaleCNS v1.0` brain through a `RATE_SHOCK` scenario and lands on a
 `LIQUIDATE` decision, giving reviewers a single-click path through
 `Attest → Replay → Commit → Write-back`.
@@ -274,7 +274,7 @@ This project is an original submission for **BUIDL CTC 2026 Fall**, **RWA track*
 
 - Pitch deck: [docs/Counterfly-Deck.pdf](docs/Counterfly-Deck.pdf) — regenerate with `python3 scripts/make_deck.py`
 - Logo: [assets/logo.png](assets/logo.png)
-- Demo video script: [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md) — set `DEMO_VIDEO_URL` in `.env` after upload
+- Demo video: [docs/Counterfly-Demo.mp4](docs/Counterfly-Demo.mp4) (~105s, 1920×1080) — re-record with `npm run record:demo` (see [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md)); upload to YouTube/Loom and set `DEMO_VIDEO_URL` in `.env` for DoraHacks
 - Hackathon form copy: [docs/SUBMISSION.md](docs/SUBMISSION.md)
 
 ---

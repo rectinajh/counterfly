@@ -9,7 +9,7 @@
     "relay": "tsx src/relay.ts",
     "run": "tsx src/index.ts",
     "serve": "tsx src/server.ts",
-    "test": "tsx --test src/scenario.test.ts",
+    "test": "tsx --test src/scenario.test.ts src/replay.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "fly:prepare": "python3 fly/prepare.py --demo",

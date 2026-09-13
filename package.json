@@ -11,7 +11,11 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "demo": "npm run demo --workspace @counterfly/worker"
+    "demo": "npm run demo --workspace @counterfly/worker",
+    "record:demo": "node scripts/record_demo.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
   },
   "engines": {
     "node": ">=20"

@@ -1,18 +1,14 @@
 import { createServer } from "node:http";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import {
-  assetIdFromSourceEvent,
-  buildScenario,
-  type Counterfactual,
-} from "./scenario";
-import { runFly } from "./flyRunner";
-import { WRITABILITY_STATUS } from "./writability";
+import { runPipeline } from "./pipeline";
 import {
   commitDecisionOnChain,
   readWritebackStatus,
   relayDecisionOnChain,
 } from "./writeback";
+import type { Counterfactual } from "./scenario";
+import { attestSepoliaEvent } from "./attest";
+import { VERIFIED_SEPOLIA_PAYMENT } from "./sourceEvent";
+import { getPipelineCapabilities } from "./capabilities";
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -23,23 +19,9 @@ interface RunRequest {
   magnitude?: number;
 }
 
-const DEMO_EVENT = {
-  txHash: `0x${"a".repeat(64)}`,
-  blockNumber: 12345678,
-  chainKey: 1,
-  eventType: "PAYMENT" as const,
-};
-
-const REAL_EVENT = {
-  txHash: "0xfcb1d4277b56b03ed2e0fb536f5ec32f26abcc6e149a00f9bb3c729750b1afba",
-  blockNumber: 11695624,
-  chainKey: 1,
-  eventType: "PAYMENT" as const,
-};
-
 let latest: unknown = null;
 
-type TimelineType = "replay" | "commit" | "relay";
+type TimelineType = "attest" | "replay" | "commit" | "relay";
 
 interface TimelineEvent {
   id: string;
@@ -72,6 +54,7 @@ function latestDecision() {
     assetId?: unknown;
     replayHash?: unknown;
     action?: unknown;
+    scenario?: unknown;
   };
 
   if (
@@ -86,6 +69,7 @@ function latestDecision() {
     assetId: candidate.assetId,
     replayHash: candidate.replayHash,
     action: candidate.action,
+    scenario: candidate.scenario,
   };
 }
 
@@ -99,23 +83,6 @@ function currentGraph(): "demo" | "full" {
   return "demo";
 }
 
-function graphInfo(graph: "demo" | "full") {
-  if (graph === "demo") {
-    return { neuronCount: 512, edgeCount: 2048 };
-  }
-
-  try {
-    const metaPath = path.resolve(__dirname, "../fly/data/malecns_v1.meta.json");
-    const meta = JSON.parse(readFileSync(metaPath, "utf8"));
-    return {
-      neuronCount: Number(meta.neuron_count),
-      edgeCount: Number(meta.edge_count),
-    };
-  } catch {
-    return { neuronCount: 0, edgeCount: 0 };
-  }
-}
-
 async function handleRun(body: RunRequest) {
   const graph: "demo" | "full" = body.graph === "full" ? "full" : "demo";
   const scenarioType = body.scenario || "BASE_REPLAY";
@@ -125,43 +92,58 @@ async function handleRun(body: RunRequest) {
       : scenarioType === "RATE_SHOCK"
         ? 0.2
         : 0;
-  const event = graph === "full" ? REAL_EVENT : DEMO_EVENT;
-  const assetId = assetIdFromSourceEvent(event);
+
   const counterfactual: Counterfactual = {
     type: scenarioType as Counterfactual["type"],
     magnitude,
     horizon: 12,
   };
 
-  const scenario = buildScenario({ assetId, sourceEvent: event, counterfactual });
-  const output = await runFly(scenario, 0, graph);
-  scenario.scenarioHash = output.scenarioHash;
+  const result = await runPipeline({ graph, counterfactual, seed: 0, attest: true });
 
-  const info = graphInfo(graph);
+  if (result.attestation.verified) {
+    pushTimeline({
+      type: "attest",
+      assetId: result.assetId,
+      action: result.action,
+      graph,
+      detail: `BlockProver verified Sepolia tx @ block ${result.sourceEvent.blockNumber}`,
+    });
+  }
 
   latest = {
-    mode: graph,
-    scenarioType,
-    magnitude,
-    assetId,
-    sourceEvent: scenario.sourceEvent,
-    graphHash: output.graphHash,
-    neuronCount: info.neuronCount,
-    edgeCount: info.edgeCount,
-    motorAxis: output.motorAxis,
-    action: output.action,
-    replayHash: output.replayHash,
-    scenarioHash: output.scenarioHash,
-    writability: WRITABILITY_STATUS,
-    timestamp: new Date().toISOString(),
+    mode: result.mode,
+    scenarioType: result.scenarioType,
+    magnitude: result.magnitude,
+    assetId: result.assetId,
+    sourceEvent: result.sourceEvent,
+    attestation: {
+      verified: result.attestation.verified,
+      skipped: result.attestation.skipped,
+      headerNumber: result.attestation.headerNumber,
+      error: result.attestation.error,
+    },
+    rwaVertical: result.rwaVertical,
+    rwaTitle: result.rwaTitle,
+    rwaDescription: result.rwaDescription,
+    graphHash: result.graphHash,
+    neuronCount: result.neuronCount,
+    edgeCount: result.edgeCount,
+    motorAxis: result.motorAxis,
+    action: result.action,
+    replayHash: result.replayHash,
+    scenarioHash: result.scenarioHash,
+    scenario: result.scenario,
+    writability: result.writability,
+    timestamp: result.timestamp,
   };
 
   pushTimeline({
     type: "replay",
-    assetId,
-    action: output.action,
+    assetId: result.assetId,
+    action: result.action,
     graph,
-    detail: `${scenarioType} magnitude=${magnitude}`,
+    detail: `${scenarioType} magnitude=${magnitude} · ${result.rwaTitle}`,
   });
 
   return latest;
@@ -181,6 +163,12 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
 
   try {
+    if (req.method === "GET" && url.pathname === "/api/capabilities") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(getPipelineCapabilities()));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(latest));
@@ -190,6 +178,15 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/timeline") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ events: timeline }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/attest") {
+      const tx =
+        url.searchParams.get("txHash") ?? VERIFIED_SEPOLIA_PAYMENT.txHash;
+      const attestation = await attestSepoliaEvent(tx);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(attestation));
       return;
     }
 
@@ -236,6 +233,10 @@ const server = createServer(async (req, res) => {
         assetId: body.assetId ?? decision.assetId,
         replayHash: body.replayHash ?? decision.replayHash,
         action: typeof body.action === "number" ? body.action : decision.action,
+        scenario:
+          decision.scenario && typeof decision.scenario === "object"
+            ? (decision.scenario as import("./scenario").ScenarioInput)
+            : undefined,
       });
 
       pushTimeline({

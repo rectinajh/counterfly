@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { DEMO_GOLDEN_REPLAY, goldenKey } from "./golden-replay";
 
 export type CloudScenario =
   | "BASE_REPLAY"
@@ -21,6 +22,32 @@ const DEMO_SOURCE_EVENT = {
 const GRAPH_HASH = createHash("sha256")
   .update("counterfly-demo-pruned:512:2048")
   .digest("hex");
+
+const RWA_COPY: Record<
+  CloudScenario,
+  { vertical: string; title: string; description: string }
+> = {
+  BASE_REPLAY: {
+    vertical: "invoice",
+    title: "Invoice / receivables financing",
+    description: "Steady attested payment history with no counterfactual shock.",
+  },
+  RATE_SHOCK: {
+    vertical: "solar",
+    title: "Solar lease cash-flow",
+    description: "Revenue-backed LTV; a rate shock reduces effective coverage.",
+  },
+  MISSED_PAYMENT: {
+    vertical: "invoice",
+    title: "Invoice / receivables financing",
+    description: "Late receivable stream with a missed-installment counterfactual.",
+  },
+  HAZARD: {
+    vertical: "parametric",
+    title: "Parametric insurance",
+    description: "Attested hazard history with a strong shock scenario.",
+  },
+};
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -46,44 +73,16 @@ function scenarioMagnitude(
   return 0;
 }
 
-function motorAxis(scenario: CloudScenario, magnitude: number): number {
-  const base: Record<CloudScenario, number> = {
-    BASE_REPLAY: 0.7,
-    RATE_SHOCK: 0.7,
-    MISSED_PAYMENT: 0.58,
-    HAZARD: 0.46,
-  };
-
-  const sensitivity: Record<CloudScenario, number> = {
-    BASE_REPLAY: 0,
-    RATE_SHOCK: 0.42,
-    MISSED_PAYMENT: 0.28,
-    HAZARD: 0.18,
-  };
-
-  const axis = base[scenario] - sensitivity[scenario] * magnitude;
-  return Number(Math.max(0, Math.min(1, axis)).toFixed(6));
-}
-
-function actionFor(scenario: CloudScenario, axis: number): number {
-  if (scenario === "HAZARD" && axis < 0.4) {
-    return 3; // PAY_OUT
-  }
-  if (axis >= 0.65) {
-    return 0; // HOLD
-  }
-  if (axis >= 0.4) {
-    return 1; // ADJUST_LTV
-  }
-  return 2; // LIQUIDATE
-}
+/** keccak256(utf8("1:" + demoTx)) — matches worker assetIdFromSourceEvent. */
+const DEMO_ASSET_ID =
+  "0x2c6ae26f6815fec41e08a51d8a8ad5c1bebfccc43bcfc04222671fac083d9512";
 
 export function cloudDemoRun(body: CloudRunRequest) {
   const graph: "demo" | "full" = body.graph === "full" ? "full" : "demo";
 
   if (graph === "full") {
     const error = new Error(
-      "Full MaleCNS replay is not available in the Vercel cloud preview. Run the worker locally or deploy it to a Python-capable host.",
+      "Full MaleCNS replay requires the Python worker. Use the hosted worker API or run locally.",
     );
     (error as Error & { status?: number }).status = 501;
     throw error;
@@ -91,37 +90,47 @@ export function cloudDemoRun(body: CloudRunRequest) {
 
   const scenarioType = (body.scenario || "BASE_REPLAY") as CloudScenario;
   const magnitude = scenarioMagnitude(scenarioType, body.magnitude);
-  const axis = motorAxis(scenarioType, magnitude);
-  const action = actionFor(scenarioType, axis);
+  const golden = DEMO_GOLDEN_REPLAY[goldenKey(scenarioType, magnitude)];
 
-  const assetId = sha256(
-    `${DEMO_SOURCE_EVENT.blockNumber}:${DEMO_SOURCE_EVENT.txHash}`,
-  );
+  if (!golden) {
+    const error = new Error(
+      `No golden replay for ${scenarioType} magnitude=${magnitude}. Run the worker for custom parameters.`,
+    );
+    (error as Error & { status?: number }).status = 400;
+    throw error;
+  }
+
+  const copy = RWA_COPY[scenarioType];
   const scenarioHash = sha256(
     JSON.stringify({ scenarioType, magnitude, horizon: 12 }),
-  );
-  const replayHash = sha256(
-    `${GRAPH_HASH}:${scenarioHash}:${axis.toFixed(6)}:${action}`,
   );
 
   return {
     mode: graph,
     scenarioType,
     magnitude,
-    assetId: `0x${assetId}`,
+    assetId: DEMO_ASSET_ID,
     sourceEvent: DEMO_SOURCE_EVENT,
+    attestation: {
+      verified: false,
+      skipped: true,
+      error: "Cloud fallback uses synthetic demo tx; connect worker for live Attestcoin verify.",
+    },
+    rwaVertical: copy.vertical,
+    rwaTitle: copy.title,
+    rwaDescription: copy.description,
     graphHash: GRAPH_HASH,
     neuronCount: 512,
     edgeCount: 2048,
-    motorAxis: axis,
-    action,
-    replayHash,
+    motorAxis: golden.motorAxis,
+    action: golden.action,
+    replayHash: golden.replayHash,
     scenarioHash,
     writability: {
       available: false,
       mode: "relayer-bridge",
       destination: "Ethereum Sepolia RwaAction",
-      note: "Cloud preview runs the deterministic demo engine only; write-back is disabled.",
+      note: "Cloud fallback is read-only; commit/relay require the worker backend.",
     },
     timestamp: new Date().toISOString(),
   };
@@ -135,6 +144,30 @@ export function cloudWritebackStatus(assetId: string | null) {
     rwaLtvBps: "0",
     rwaLiquidated: false,
     error:
-      "On-chain write-back is not available in the Vercel cloud preview.",
+      "On-chain write-back requires the full worker (set COUNTERFLY_API_ORIGIN or run locally).",
+  };
+}
+
+export function cloudCapabilities() {
+  return {
+    source: "cloud-fallback" as const,
+    pipeline: "replay-only" as const,
+    features: {
+      liveAttest: false,
+      malecnsFull: false,
+      onChainCommit: false,
+      onChainRelay: false,
+    },
+    message:
+      "Cloud fallback: deterministic demo replay only. Point Vercel COUNTERFLY_API_ORIGIN at your worker :8786 for the full Attest → Commit → Relay path.",
+  };
+}
+
+export function cloudAttestStatus() {
+  return {
+    event: DEMO_SOURCE_EVENT,
+    verified: false,
+    skipped: true,
+    error: "Use worker /api/attest for live BlockProver verification.",
   };
 }

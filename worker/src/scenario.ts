@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import type { VerifiedEvent } from "./attest";
+import { presetForScenario } from "./rwaPresets";
 
 export type CounterfactualType =
   | "BASE_REPLAY"
@@ -57,24 +58,6 @@ function merkleRoot(entries: HistoryEntry[]): string {
   return layer[0];
 }
 
-function demoHistory(): HistoryEntry[] {
-  return [
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-    { amount: 100, daysLate: 0 },
-  ];
-}
-
 export function assetIdFromSourceEvent(event: VerifiedEvent): string {
   return ethers.keccak256(ethers.toUtf8Bytes(`${event.chainKey}:${event.txHash}`));
 }
@@ -85,7 +68,8 @@ export function buildScenario(opts: {
   counterfactual: Counterfactual;
   history?: HistoryEntry[];
 }): ScenarioInput {
-  const history = opts.history ?? demoHistory();
+  const history =
+    opts.history ?? presetForScenario(opts.counterfactual.type).history;
   const historyMerkleRoot = merkleRoot(history);
 
   const base: Omit<ScenarioInput, "scenarioHash" | "historyMerkleRoot"> = {

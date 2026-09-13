@@ -2,6 +2,7 @@ import { Contract, JsonRpcProvider, Wallet } from "ethers";
 import { config } from "./config";
 import type { ScenarioInput } from "./scenario";
 import type { FlyOutput } from "./flyRunner";
+import { ensureScenarioOnAsc } from "./ascSubmit";
 
 const COUNTERFLY_ABI = [
   "function commitDecision((bytes32 assetId,bytes32 replayHash,uint8 action,uint256 newLtvBps,uint256 nonce) d, bytes signature) external",
@@ -37,6 +38,8 @@ export async function commitDecision(
     );
     return null;
   }
+
+  await ensureScenarioOnAsc(scenario);
 
   const provider = new JsonRpcProvider(config.cc3Rpc);
   const wallet = new Wallet(config.privateKey, provider);

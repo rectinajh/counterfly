@@ -1,5 +1,7 @@
 import { Contract, JsonRpcProvider, Wallet, ethers } from "ethers";
 import { config } from "./config";
+import type { ScenarioInput } from "./scenario";
+import { ensureScenarioOnAsc } from "./ascSubmit";
 
 const ASC_ABI = [
   "function commitDecision((bytes32 assetId,bytes32 replayHash,uint8 action,uint256 newLtvBps,uint256 nonce) d, bytes signature) external",
@@ -46,7 +48,7 @@ function actionToLtvBps(action: number): bigint {
   return 7500n; // HOLD
 }
 
-function hasWriteConfig(): boolean {
+export function hasWriteConfig(): boolean {
   return Boolean(
     config.privateKey &&
       config.workerAddress &&
@@ -113,8 +115,13 @@ export async function commitDecisionOnChain(input: {
   assetId: string;
   replayHash: string;
   action: number;
+  scenario?: ScenarioInput;
 }): Promise<{ txHash: string; newLtvBps: string }> {
   requireWriteConfig();
+
+  if (input.scenario) {
+    await ensureScenarioOnAsc(input.scenario);
+  }
 
   const provider = new JsonRpcProvider(config.cc3Rpc);
   const wallet = new Wallet(config.privateKey, provider);

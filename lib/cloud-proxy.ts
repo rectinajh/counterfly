@@ -1,7 +1,12 @@
-import { cloudDemoRun, cloudWritebackStatus } from "./cloud-demo";
+import {
+  cloudAttestStatus,
+  cloudCapabilities,
+  cloudDemoRun,
+  cloudWritebackStatus,
+} from "./cloud-demo";
 
 const BACKEND_ORIGIN =
-  process.env.COUNTERFLY_API_ORIGIN || "http://144.91.75.120:80";
+  process.env.COUNTERFLY_API_ORIGIN || "http://144.91.75.120:8786";
 
 export async function proxyApi(req: any, res: any) {
   setCors(res);
@@ -11,7 +16,9 @@ export async function proxyApi(req: any, res: any) {
     return;
   }
 
+  const pathname = new URL(req.url || "/", "http://localhost").pathname;
   const target = `${BACKEND_ORIGIN}${req.url}`;
+  const timeoutMs = pathname === "/api/run" ? 120000 : 8000;
 
   try {
     const upstream = await withTimeout(
@@ -23,7 +30,7 @@ export async function proxyApi(req: any, res: any) {
         },
         body: req.body ? JSON.stringify(req.body) : undefined,
       }),
-      4000,
+      timeoutMs,
     );
 
     const text = await upstream.text();
@@ -76,6 +83,16 @@ function fallback(req: any, res: any) {
 
   if (req.method === "GET" && pathname === "/api/timeline") {
     res.status(200).json({ events: [] });
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/attest") {
+    res.status(200).json(cloudAttestStatus());
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/capabilities") {
+    res.status(200).json(cloudCapabilities());
     return;
   }
 

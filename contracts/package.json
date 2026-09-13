@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "build": "hardhat compile",
     "deploy:cc3": "hardhat run scripts/deployCounterflyASC.ts --network cc3Testnet",
-    "deploy:sepolia": "hardhat run scripts/deployRwaAction.ts --network sepolia"
+    "deploy:sepolia": "hardhat run scripts/deployRwaAction.ts --network sepolia",
+    "deploy:receivable": "hardhat run scripts/deployRwaReceivable.ts --network sepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
