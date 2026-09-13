@@ -110,7 +110,7 @@ flowchart LR
 | Destination chain | Creditcoin CC3 testnet |
 | Read path | `ProofBuilder` + `BlockProver` precompile verifies RWA payment/ownership events |
 | Compute path | Deterministic off-chain `MaleCNS` replay worker (hash-pinned, open-source) |
-| Write path | `Counterfly ASC` stores the decision; writability sends a conditional instruction back to Sepolia |
+| Write path | `Counterfly ASC` stores the decision; a relayer bridge sends a conditional instruction back to Sepolia (native writability pending testnet release) |
 
 The project is built on the official [attestcoin-protocol-examples](https://github.com/gluwa/attestcoin-protocol-examples) tutorials, extending the cross-chain loan example with the connectome replay engine.
 
@@ -159,7 +159,10 @@ npm run test -w @counterfly/contracts
 npm run demo -w @counterfly/worker
 npm run demo -w @counterfly/worker -- --scenario=RATE_SHOCK
 
-# 5. Start the dashboard
+# 5. Start the worker API
+npm run serve -w @counterfly/worker
+
+# 6. Start the dashboard (in another terminal)
 npm run dev -w @counterfly/dashboard
 ```
 
@@ -183,6 +186,12 @@ npm run run -w @counterfly/worker -- 0x<sepolia-tx-hash>
 
 The default demo graph is a small deterministic pruned graph. To export the
 real `MaleCNS v1.0` connectome, see `worker/fly/prepare.py`.
+
+The dashboard talks to the worker API at `http://localhost:8787` by default.
+Use the **Demo brain / MaleCNS v1.0** switch to replay either the pruned graph
+or the prepared real connectome. Native Attestcoin writability is not yet
+released on CC3 testnet, so the current cross-chain write-back uses the
+`worker/src/relay.ts` bridge.
 
 ---
 

@@ -8,6 +8,7 @@
     "demo:full": "tsx src/index.ts --demo --graph=full",
     "relay": "tsx src/relay.ts",
     "run": "tsx src/index.ts",
+    "serve": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "fly:prepare": "python3 fly/prepare.py --demo",

@@ -42,7 +42,8 @@ flowchart TB
     SC --> REP
     REP --> DEC
     DEC -->|"decision + signature"| ASC
-    ASC -->|"writability instruction"| ACT
+    ASC -->|"decision"| RELAY["Relayer bridge"]
+    RELAY -->|"adjustLtv / requestLiquidation"| ACT
 ```
 
 ## 3. Components
@@ -189,15 +190,41 @@ interface ICounterflyASC {
 
 The writability path is a conditional instruction from the ASC to a Sepolia action contract. In the demo, this is a guarded `requestLiquidation` or `adjustLtv` call that the ASC can emit after a decision crosses a threshold.
 
-### 3.6 Dashboard
+### 3.6 Dashboard API and web UI
 
-The dashboard shows:
+The React dashboard is connected to a real worker HTTP API instead of a local
+mock. The worker exposes:
 
-- Attested source events and their on-chain verification status.
-- The active scenario and counterfactual parameters.
-- Live replay state and motor readout.
-- The committed decision hash and cross-chain action status.
-- A "how to reproduce" panel with the exact pinned inputs and seed.
+- `GET /api/state` — the most recently replayed decision, or `null` if the
+  server has not run yet.
+- `POST /api/run` — runs a replay and returns the full state:
+
+```json
+{
+  "graph": "demo",
+  "scenario": "BASE_REPLAY",
+  "magnitude": 0
+}
+```
+
+The response includes the active graph mode, counterfactual scenario, source
+event, neuron/edge counts, `graphHash`, `scenarioHash`, `replayHash`, the motor
+axis, the resulting action, and the current `writability` status.
+
+The dashboard supports a **demo brain / real brain switch**:
+
+- `demo` — the deterministic 512-neuron pruned graph, useful for fast demos.
+- `full` — the prepared `MaleCNS v1.0` graph (`worker/fly/data/malecns_v1.npz`).
+
+Start the API and dashboard together:
+
+```bash
+npm run serve -w @counterfly/worker
+npm run dev -w @counterfly/dashboard
+```
+
+The frontend API base URL defaults to `http://localhost:8787` and can be
+overridden with `VITE_API_BASE_URL`.
 
 ## 4. Attestcoin integration details
 
@@ -228,12 +255,15 @@ The demo uses **Ethereum Sepolia** (`chainKey = 1`) because it matches the testn
 4. Verify the proof on-chain with the `BlockProver` precompile.
 5. Normalize the verified event into the history root.
 
-### 4.4 Write flow
+### 4.4 Write flow (relayer bridge)
 
-1. The off-chain worker signs the decision payload.
-2. The ASC verifies the signature and stores the decision.
-3. If the action crosses a published threshold, the ASC emits an event that the target-chain relayer consumes.
-4. The relayer submits the conditional instruction to the Sepolia action contract.
+1. The off-chain worker signs the decision payload with EIP-712.
+2. The ASC verifies the signature and stores the decision on CC3.
+3. A separate relayer reads `latestDecision(assetId)` from the ASC.
+4. The relayer submits the conditional instruction to the Sepolia action contract:
+   - `HOLD` — no action.
+   - `ADJUST_LTV` — calls `RwaAction.adjustLtv`.
+   - `LIQUIDATE` — calls `RwaAction.requestLiquidation`.
 
 The relayer is implemented as `worker/src/relay.ts`:
 
@@ -243,6 +273,29 @@ npm run relay --workspace @counterfly/worker -- --asset=0x<asset-id>
 
 `HOLD` produces no action, `ADJUST_LTV` calls `RwaAction.adjustLtv`, and
 `LIQUIDATE` calls `RwaAction.requestLiquidation` on Sepolia.
+
+### 4.5 Native Attestcoin writability
+
+Attestcoin Protocol Writability is the native message path for sending arbitrary
+payloads from a Creditcoin contract to a destination chain. The documented
+four-step flow is:
+
+1. **Message publishing** — a user or contract publishes a message to the outbox
+   for the destination chain; delivery payment is submitted to a relayer contract.
+2. **Message signing** — attestors wait for Creditcoin finality, then sign each
+   message until a `2/3 + 1` quorum is reached.
+3. **Message delivery** — relayers deliver the message and signatures to the
+   destination chain's inbox contract.
+4. **Message validation** — the inbox validates attestor signatures and forwards
+   the payload to the designated destination contract.
+
+**Current status:** native writability is undergoing third-party testing and
+audits and has not yet been released on the CC3 testnet. The official
+`@gluwa/usc-sdk` package does not yet export a writability module, so Counterfly
+cannot call the outbox directly today. The implemented `worker/src/writability.ts`
+records this status and keeps the interface ready for the native outbox/inbox
+path. Until release, the relayer bridge in section 4.4 is the production
+cross-chain write-back path.
 
 ## 5. Connectome simulation details
 

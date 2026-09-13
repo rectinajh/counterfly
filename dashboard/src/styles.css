@@ -51,8 +51,30 @@ body {
 
 .controls {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 16px;
   margin: 32px 0;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.control-label {
+  min-width: 118px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.segmented {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 button {
@@ -64,9 +86,47 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 button.active {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+button.run {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+input[type="number"] {
+  width: 96px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 8px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid #f87171;
+  background: #2a1416;
+  border-radius: 12px;
+  color: #fca5a5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error strong {
+  color: #fecaca;
 }
 
 .grid {
@@ -142,6 +202,32 @@ dd.action {
   font-size: 12px;
 }
 
+.hashes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.hash-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 12px;
+}
+
+.hash-block span {
+  color: var(--muted);
+}
+
+.hash-block code {
+  overflow-wrap: anywhere;
+}
+
 .reproduce {
   display: flex;
   gap: 12px;
@@ -164,7 +250,13 @@ code {
 }
 
 @media (max-width: 760px) {
-  .grid {
+  .grid,
+  .hashes {
     grid-template-columns: 1fr;
+  }
+
+  .control-group {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
