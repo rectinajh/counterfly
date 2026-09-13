@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Counterfly logo">
+  <defs>
+    <linearGradient id="flyGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ff"/>
+      <stop offset="1" stop-color="#7a5cff"/>
+    </linearGradient>
+    <linearGradient id="wingGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff4a82"/>
+      <stop offset="1" stop-color="#ff9636"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="#080d1f"/>
+  <rect x="18" y="18" width="476" height="476" rx="96" fill="none" stroke="url(#flyGrad)" stroke-width="4" opacity="0.55"/>
+
+  <g filter="url(#glow)">
+    <path d="M110 272 C160 156 240 126 256 140 C272 126 352 156 402 272 C360 232 316 218 256 222 C196 218 152 232 110 272 Z" fill="url(#wingGrad)" opacity="0.92" transform="rotate(-14 256 224)"/>
+    <path d="M110 240 C160 356 240 386 256 372 C272 386 352 356 402 240 C360 280 316 294 256 290 C196 294 152 280 110 240 Z" fill="url(#flyGrad)" opacity="0.9" transform="rotate(-14 256 288)"/>
+
+    <ellipse cx="256" cy="256" rx="88" ry="118" fill="url(#flyGrad)"/>
+    <ellipse cx="256" cy="256" rx="88" ry="118" fill="none" stroke="#eaffff" stroke-width="4" opacity="0.8"/>
+
+    <path d="M216 176 C226 130 238 102 256 84 C274 102 286 130 296 176" fill="none" stroke="#eaffff" stroke-width="8" stroke-linecap="round"/>
+    <path d="M232 122 C240 100 248 88 256 78" fill="none" stroke="#ff4a82" stroke-width="6" stroke-linecap="round"/>
+    <path d="M280 122 C272 100 264 88 256 78" fill="none" stroke="#ff4a82" stroke-width="6" stroke-linecap="round"/>
+
+    <circle cx="232" cy="224" r="13" fill="#ff4a82"/>
+    <circle cx="280" cy="224" r="13" fill="#ff4a82"/>
+    <circle cx="256" cy="260" r="6" fill="#0ff"/>
+    <circle cx="220" cy="290" r="6" fill="#0ff"/>
+    <circle cx="292" cy="290" r="6" fill="#0ff"/>
+
+    <g stroke="#eaffff" stroke-width="6" opacity="0.85">
+      <path d="M196 176 L176 146"/>
+      <path d="M316 176 L336 146"/>
+      <path d="M190 216 L158 212"/>
+      <path d="M322 216 L354 212"/>
+      <path d="M210 336 L184 370"/>
+      <path d="M302 336 L328 370"/>
+    </g>
+  </g>
+
+  <g font-family="'Courier New', monospace" fill="#eaffff" text-anchor="middle">
+    <text x="256" y="470" font-size="34" font-weight="700" letter-spacing="8">COUNTERFLY</text>
+    <text x="256" y="497" font-size="13" fill="#7f8ca8" letter-spacing="3">REPRODUCE THE FLY</text>
+  </g>
+</svg>

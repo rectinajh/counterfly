@@ -753,3 +753,39 @@ code {
     display: none;
   }
 }
+
+.recommended-group {
+  width: 100%;
+}
+
+.recommended {
+  border: 1px solid rgba(255, 74, 130, 0.65);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 74, 130, 0.24),
+    rgba(255, 148, 54, 0.18)
+  );
+  color: #ffd7e4;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(255, 74, 130, 0.18);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.recommended:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 120, 170, 0.9);
+  box-shadow: 0 0 30px rgba(255, 74, 130, 0.34);
+}
+
+.recommended:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

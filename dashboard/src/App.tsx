@@ -139,6 +139,10 @@ export function App() {
     void execute(graph, scenario, magnitude);
   };
 
+  const runRecommended = () => {
+    void execute("full", "RATE_SHOCK", 0.8);
+  };
+
   const commit = async () => {
     if (!state) {
       return;
@@ -278,6 +282,18 @@ export function App() {
             {loading ? "Replaying…" : "Run replay"}
           </button>
         </div>
+
+        <div className="control-group recommended-group">
+          <button
+            className="recommended"
+            onClick={runRecommended}
+            disabled={loading}
+          >
+            {loading
+              ? "Running…"
+              : "Recommended demo · MaleCNS v1.0 · RATE_SHOCK 0.8 → LIQUIDATE"}
+          </button>
+        </div>
       </section>
 
       {error ? (
@@ -298,10 +314,10 @@ export function App() {
           <section className="grid">
             <Panel
               title="1 · Attest"
-              subtitle="Verified source event"
+              subtitle="Attestcoin ProofBuilder + BlockProver"
               items={[
                 ["Payment tx", shortHash(state.sourceEvent.txHash)],
-                ["Block", String(state.sourceEvent.blockNumber)],
+                ["Sepolia block", String(state.sourceEvent.blockNumber)],
                 ["Brain", state.mode === "full" ? "MaleCNS v1.0" : "Demo brain"],
               ]}
             />

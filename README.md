@@ -110,9 +110,31 @@ flowchart LR
 | Destination chain | Creditcoin CC3 testnet |
 | Read path | `ProofBuilder` + `BlockProver` precompile verifies RWA payment/ownership events |
 | Compute path | Deterministic off-chain `MaleCNS` replay worker (hash-pinned, open-source) |
-| Write path | `Counterfly ASC` stores the decision; a relayer bridge sends a conditional instruction back to Sepolia (native writability pending testnet release) |
+| Write path | `Counterfly ASC` stores the decision; a signed relayer bridge sends a conditional instruction back to Sepolia until native writability ships |
 
 The project is built on the official [attestcoin-protocol-examples](https://github.com/gluwa/attestcoin-protocol-examples) tutorials, extending the cross-chain loan example with the connectome replay engine.
+
+### Attestcoin writability status
+
+The **read path, replay path, and ASC commit path all use the native
+Attestcoin SDK**. Native cross-chain *writability* is still undergoing
+third-party testing on CC3 testnet and is not exported by `@gluwa/usc-sdk`
+yet. Counterfly therefore uses an **explicit, auditable relayer bridge**
+(`worker/src/relay.ts`) for the final `adjustLtv` / `requestLiquidation`
+instruction, while `worker/src/writability.ts` keeps the native outbox/inbox
+interface ready so the bridge can be swapped without changing the decision
+semantics.
+
+This is an engineering choice about the protocol boundary, not a gap in the
+Attestcoin integration: the decision that matters is still attested on-chain
+and committed to the ASC before any cross-chain instruction is issued.
+
+### Testnet deployment
+
+| Contract | Network | Address |
+| --- | --- | --- |
+| `CounterflyASC.sol` | Creditcoin CC3 testnet | [`0x04bbB94463a0e97f63Df7912af02AB33Ad622ef2`](https://creditcoin-testnet.blockscout.com/address/0x04bbB94463a0e97f63Df7912af02AB33Ad622ef2) |
+| `RwaAction.sol` | Ethereum Sepolia | [`0x4a1c9031ab8f736C4fEc8488b1294928EEE99817`](https://sepolia.etherscan.io/address/0x4a1c9031ab8f736C4fEc8488b1294928EEE99817) |
 
 ---
 
@@ -124,7 +146,12 @@ counterfly/
 ├── README.md
 ├── PRD.md
 ├── docs/
-│   └── TECHNICAL.md
+│   ├── TECHNICAL.md
+│   └── Counterfly-Deck.pdf
+├── assets/
+│   └── logo.svg
+├── scripts/
+│   └── make_deck.py
 ├── contracts/
 │   ├── contracts/        # CounterflyASC.sol, RwaAction.sol
 │   ├── scripts/          # deployment scripts
@@ -171,15 +198,16 @@ The dashboard runs the replay first, then exposes **Commit to CC3** and
 step by step. The event timeline turns each transaction into a clickable
 Blockscout or Etherscan link.
 
-### Public Vercel preview
+### Public demo
 
-The dashboard is also deployed at
-[https://counterfly.vercel.app](https://counterfly.vercel.app).
+Primary preview: [https://counterfly.vercel.app](https://counterfly.vercel.app).
 
-In the public preview, Vercel serves a deterministic **demo brain** replay
-through its serverless API, so the UI works without a local worker. The real
-`MaleCNS v1.0` brain and on-chain commit/relay are disabled in the cloud
-preview; run `npm run serve -w @counterfly/worker` locally for those paths.
+Fallback deployment (full worker): `http://144.91.75.120:8786`.
+
+The dashboard has a **Recommended demo** button that runs the full
+`MaleCNS v1.0` brain through a `RATE_SHOCK` scenario and lands on a
+`LIQUIDATE` decision, giving reviewers a single-click path through
+`Attest → Replay → Commit → Write-back`.
 
 To replay on the **real MaleCNS v1.0 connectome** (166,700 neurons), set up the
 Python environment and export the Janelia data once:
@@ -213,6 +241,12 @@ released on CC3 testnet, so the current cross-chain write-back uses the
 ## 9. Status
 
 This project is an original submission for **BUIDL CTC 2026 Fall**, **RWA track**, built on the **Attestcoin Protocol**.
+
+## 10. Submission assets
+
+- Pitch deck: [docs/Counterfly-Deck.pdf](docs/Counterfly-Deck.pdf)
+- Logo: [assets/logo.svg](assets/logo.svg)
+- Demo video: TBD (single-click `Recommended demo` path)
 
 ---
 

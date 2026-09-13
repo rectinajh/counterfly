@@ -27,5 +27,8 @@ jobs:
       - name: Test contracts
         run: npm run test -w @counterfly/contracts
 
+      - name: Test worker determinism
+        run: npm run test -w @counterfly/worker
+
       - name: Build
         run: npm run build
