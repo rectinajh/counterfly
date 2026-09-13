@@ -6,6 +6,8 @@
 
 > Cypherpunk core idea: **"Don't trust the appraiser — reproduce the fly."**
 
+**中文摘要：** Counterfly 用 Attestcoin 在 Creditcoin 上验证 Sepolia 的 RWA 支付事件，将可验证历史与反事实场景输入果蝇 connectome 做确定性回放，把 motor 读数映射为 HOLD / 调 LTV / 清算等动作，并通过 ASC + relayer 写回 Sepolia。核心主张是「别信评估师——复现果蝇」。
+
 ---
 
 ## 1. Background
@@ -133,8 +135,30 @@ and committed to the ASC before any cross-chain instruction is issued.
 
 | Contract | Network | Address |
 | --- | --- | --- |
-| `CounterflyASC.sol` | Creditcoin CC3 testnet | [`0x04bbB94463a0e97f63Df7912af02AB33Ad622ef2`](https://creditcoin-testnet.blockscout.com/address/0x04bbB94463a0e97f63Df7912af02AB33Ad622ef2) |
+| `CounterflyASC.sol` (v2) | Creditcoin CC3 testnet | [`0x18bC3211e788d7fcb06B7aF968588Ee613C0b135`](https://creditcoin-testnet.blockscout.com/address/0x18bC3211e788d7fcb06B7aF968588Ee613C0b135) |
 | `RwaAction.sol` | Ethereum Sepolia | [`0x4a1c9031ab8f736C4fEc8488b1294928EEE99817`](https://sepolia.etherscan.io/address/0x4a1c9031ab8f736C4fEc8488b1294928EEE99817) |
+
+**ASC v2** adds verified-source registration, worker-gated scenario submit, and optional on-chain `BlockProver.verifyAndEmit`. Redeploy and update `.env`:
+
+```bash
+npm run deploy:cc3 -w @counterfly/contracts
+```
+
+Optional Sepolia cash-flow emitter: `npm run deploy:receivable -w @counterfly/contracts`.
+
+### Judge 2-minute path
+
+1. Open [counterfly.vercel.app](https://counterfly.vercel.app) (proxies to the full worker when `COUNTERFLY_API_ORIGIN` is reachable).
+2. Click **Recommended demo** (MaleCNS v1.0 · RATE_SHOCK 0.8).
+3. Confirm **Attest** panel shows **Attestcoin OK** (live verify on full brain).
+4. **Commit to CC3** → open Blockscout link in the timeline.
+5. **Relay to Sepolia** → open Etherscan link.
+
+Canonical attested Sepolia payment tx (read path):
+
+[`0xfcb1d4277b56b03ed2e0fb536f5ec32f26abcc6e149a00f9bb3c729750b1afba`](https://sepolia.etherscan.io/tx/0xfcb1d4277b56b03ed2e0fb536f5ec32f26abcc6e149a00f9bb3c729750b1afba)
+
+Live verify: `GET /api/attest?txHash=0xfcb1…` on the worker (`:8787`). Reproducibility: [docs/REPRODUCE.md](docs/REPRODUCE.md). DoraHacks copy: [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 ---
 
@@ -147,6 +171,9 @@ counterfly/
 ├── PRD.md
 ├── docs/
 │   ├── TECHNICAL.md
+│   ├── REPRODUCE.md
+│   ├── DEMO_VIDEO.md
+│   ├── SUBMISSION.md
 │   └── Counterfly-Deck.pdf
 ├── assets/
 │   ├── logo.png          # web/deck resolution
@@ -203,7 +230,7 @@ Blockscout or Etherscan link.
 
 Primary preview: [https://counterfly.vercel.app](https://counterfly.vercel.app).
 
-Fallback deployment (full worker): `http://144.91.75.120:8786`.
+Optional self-hosted worker (full Attest + Python MaleCNS): deploy with `deploy/counterfly-worker.service` on a Python-capable host; point Vercel `COUNTERFLY_API_ORIGIN` at `http://<host>:8786`. The IP fallback in older docs is **best-effort only** — prefer your own worker URL.
 
 The dashboard has a **Recommended demo** button that runs the full
 `MaleCNS v1.0` brain through a `RATE_SHOCK` scenario and lands on a
@@ -245,13 +272,14 @@ This project is an original submission for **BUIDL CTC 2026 Fall**, **RWA track*
 
 ## 10. Submission assets
 
-- Pitch deck: [docs/Counterfly-Deck.pdf](docs/Counterfly-Deck.pdf)
+- Pitch deck: [docs/Counterfly-Deck.pdf](docs/Counterfly-Deck.pdf) — regenerate with `python3 scripts/make_deck.py`
 - Logo: [assets/logo.png](assets/logo.png)
-- Demo video: TBD (single-click `Recommended demo` path)
+- Demo video script: [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md) — set `DEMO_VIDEO_URL` in `.env` after upload
+- Hackathon form copy: [docs/SUBMISSION.md](docs/SUBMISSION.md)
 
 ---
 
-## 10. Attribution and license
+## 11. Attribution and license
 
 - Connectome data: **MaleCNS v1.0**, Janelia Research Campus / HHMI, University of Cambridge, Google Research, and collaborators. Data is used as open scientific input; Counterfly is original application work.
 - Conceptually inspired by the 2026 "cyber fruit fly" wave (e.g., Stonkfly), but the code, architecture, and RWA/counterfactual framing are original.

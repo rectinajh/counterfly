@@ -293,7 +293,7 @@ story.extend(
 story.append(
     panel_table(
         [
-            ["CounterflyASC (CC3)", "0x04bbB94463a0e97f63Df7912af02AB33Ad622ef2"],
+            ["CounterflyASC v2 (CC3)", "0x18bC3211e788d7fcb06B7aF968588Ee613C0b135"],
             ["RwaAction (Sepolia)", "0x4a1c9031ab8f736C4fEc8488b1294928EEE99817"],
             ["Demo", "https://counterfly.vercel.app"],
             ["Fallback", "http://144.91.75.120:8786"],
@@ -305,11 +305,49 @@ story.append(PageBreak())
 
 story.extend(
     section(
+        "Team and roadmap",
+        "Built for CEIP-scale execution, not a one-off hackathon demo.",
+        "Counterfly ships as open infrastructure: reproducible replay, Attestcoin-native read path, "
+        "and ASC-gated commits. Next milestones: native Attestcoin writability swap-in, additional "
+        "source chains, issuer-facing APIs, and Creditcoin credit-rail integration for on-chain "
+        "RWA underwriting history.",
+    )
+)
+
+story.append(
+    panel_table(
+        [
+            ["Now", "CC3 ASC + Sepolia RwaAction + relayer write-back"],
+            ["Q4 2026", "Native outbox/inbox when CC3 exports writability"],
+            ["2027", "Issuer SDK + credit-history linkage on Creditcoin"],
+        ]
+    )
+)
+story.append(Spacer(1, 5 * mm))
+story.append(PageBreak())
+
+story.extend(
+    section(
+        "Security and ecosystem",
+        "Top-three teams receive CertiK audit credits; we designed for reviewability.",
+        "Reads are Attestcoin-verified; commits are EIP-712 worker-gated; scenarios require a "
+        "registered source tx. Relayer keys are separate from worker signing keys. Full MaleCNS "
+        "replay is hash-pinned and covered by CI golden tests (see docs/REPRODUCE.md).",
+    )
+)
+
+story.append(bullet("<b>CertiK:</b> eligible for 8,000 audit credits + Skynet Boost (BUIDL CTC top 3)."))
+story.append(bullet("<b>Creditcoin growth:</b> RWA issuers and lenders onboard via reproducible risk, not opaque scores."))
+story.append(Spacer(1, 5 * mm))
+story.append(PageBreak())
+
+story.extend(
+    section(
         "Why it scores",
         "A direct answer to the RWA trust gap, built on Attestcoin.",
         "Counterfly maps the official scoring dimensions to a single coherent demo: a meaningful "
         "Attestcoin integration, a genuinely original RWA idea, a working testnet deployment, and a "
-        "reproducible open-source pipeline. The only asset left is a short demo video.",
+        "reproducible open-source pipeline. Record the 90-second demo using docs/DEMO_VIDEO.md.",
     )
 )
 

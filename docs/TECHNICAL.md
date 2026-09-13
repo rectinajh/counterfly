@@ -170,18 +170,21 @@ interface ICounterflyASC {
         bytes32 historyMerkleRoot;
         bytes32 scenarioHash;
         uint256 timestamp;
+        bytes32 verifiedSourceTx;
     }
 
     struct Decision {
+        bytes32 assetId;
         bytes32 replayHash;
         uint8 action; // 0 HOLD, 1 ADJUST_LTV, 2 LIQUIDATE, 3 PAY_OUT
         uint256 newLtvBps;
-        uint256 thresholdBps;
+        uint256 nonce;
     }
 
     event ScenarioSubmitted(bytes32 indexed assetId, bytes32 scenarioHash);
     event DecisionCommitted(bytes32 indexed assetId, bytes32 replayHash, uint8 action);
 
+    function registerVerifiedSource(bytes32 assetId, bytes32 verifiedSourceTx) external;
     function submitScenario(Scenario calldata s) external;
     function commitDecision(Decision calldata d, bytes calldata signature) external;
     function latestDecision(bytes32 assetId) external view returns (Decision memory);
@@ -197,7 +200,8 @@ mock. The worker exposes:
 
 - `GET /api/state` — the most recently replayed decision, or `null` if the
   server has not run yet.
-- `POST /api/run` — runs a replay and returns the full state:
+- `GET /api/attest?txHash=0x…` — Attestcoin ProofBuilder + BlockProver verify for a Sepolia tx.
+- `POST /api/run` — attest (when applicable), then replay; returns attestation + RWA preset metadata:
 - `GET /api/writeback?assetId=...` — reads the ASC decision and Sepolia
   `RwaAction` state.
 - `POST /api/commit` — signs the latest replay decision with EIP-712 and commits
@@ -278,10 +282,11 @@ The demo uses **Ethereum Sepolia** (`chainKey = 1`) because it matches the testn
 
 ### 4.4 Write flow (relayer bridge)
 
-1. The off-chain worker signs the decision payload with EIP-712.
-2. The ASC verifies the signature and stores the decision on CC3.
-3. A separate relayer reads `latestDecision(assetId)` from the ASC.
-4. The relayer submits the conditional instruction to the Sepolia action contract:
+1. The off-chain worker registers the Attestcoin-verified source tx with `registerVerifiedSource`.
+2. The worker submits the scenario with `submitScenario`, pinning the history root and scenario hash.
+3. The worker signs the decision payload with EIP-712 and commits it with `commitDecision`.
+4. A separate relayer reads `latestDecision(assetId)` from the ASC.
+5. The relayer submits the conditional instruction to the Sepolia action contract:
    - `HOLD` — no action.
    - `ADJUST_LTV` — calls `RwaAction.adjustLtv`.
    - `LIQUIDATE` — calls `RwaAction.requestLiquidation`.
@@ -387,9 +392,10 @@ Decision -> commitDecision on Counterfly ASC
 
 ## 8. Reproducibility and testing
 
-- CI runs the same scenario multiple times and asserts identical `replayHash`.
-- A golden fixture stores a known scenario, graph version, and expected decision.
-- On-chain verification tests use the official Attestcoin example repository as the baseline.
+- `worker/src/replay.test.ts` runs the demo brain twice and asserts identical `replayHash`.
+- Golden `replayHash` values for `BASE_REPLAY` and `RATE_SHOCK` are pinned in CI (`SKIP_ATTEST=true`).
+- See [REPRODUCE.md](./REPRODUCE.md) for judge-facing commands and expected hashes.
+- ASC v2 requires `registerVerifiedSource` + `submitScenario` before `commitDecision` (see `worker/src/ascSubmit.ts`).
 
 ## 9. Deployment on testnet
 
