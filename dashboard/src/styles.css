@@ -19,6 +19,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 18% 8%, rgba(34, 211, 238, 0.13), transparent 34%),
     radial-gradient(circle at 84% 0%, rgba(167, 139, 250, 0.14), transparent 38%),
@@ -80,6 +81,8 @@ body {
   align-items: center;
   justify-content: center;
   height: 440px;
+  min-width: 0;
+  overflow: hidden;
   --fly-glow: var(--accent);
   --fly-bright: #eaffff;
   --fly-magenta: #ff3d8b;
@@ -120,6 +123,8 @@ body {
   z-index: 0;
   width: 420px;
   height: 420px;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 50%;
   background: radial-gradient(
     circle,
@@ -140,6 +145,8 @@ body {
 .ring-outer {
   width: 420px;
   height: 420px;
+  max-width: 96%;
+  max-height: 96%;
   border: 3px solid transparent;
   border-top-color: var(--fly-glow);
   border-right-color: color-mix(in srgb, var(--fly-glow) 30%, transparent);
@@ -155,6 +162,8 @@ body {
 .ring-mid {
   width: 348px;
   height: 348px;
+  max-width: 82%;
+  max-height: 82%;
   border: 2px dashed color-mix(in srgb, var(--fly-magenta) 62%, transparent);
   animation: spin 11s linear infinite reverse;
   opacity: 0.7;
@@ -163,6 +172,8 @@ body {
 .ring-inner {
   width: 252px;
   height: 252px;
+  max-width: 60%;
+  max-height: 60%;
   border-color: rgba(34, 211, 238, 0.24);
   border-style: dotted;
   animation: spin 8s linear infinite;
