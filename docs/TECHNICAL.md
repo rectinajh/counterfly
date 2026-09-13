@@ -264,17 +264,21 @@ descending, motor, and efferent superclasses.
   weight)` for its target.
 - **Update**: `v = leak * v + tanh(recurrent + sensory)`, with `leak = 0.85`.
 - **Recurrence**: a vectorized `bincount` matvec over `post_index`.
+- **Recurrent gain**: the real graph applies a `0.003` global recurrent gain and
+  caps the run at 16 steps to keep the motor readout in a non-saturated regime.
 - **Readout**: mean `tanh(v[output_ids])`, combined with a direct sensory term,
   then mapped to the action set.
 - **Determinism**: the prepared graph carries a `graph_hash` in its metadata;
   scenario hashing and a fixed seed make each replay reproducible.
 
-### 5.3 Honest limitation
+### 5.3 Interpretation boundary
 
 The mapping from abstract RWA financial features to sensory neurons is an
 engineering choice, not a biologically validated interface. The real-data path
 is a reproducible stress-test substrate, not a claim that the connectome
-"understands" finance.
+"understands" finance. In the current tuning, `BASE_REPLAY` maps to `HOLD` and
+`RATE_SHOCK` maps to `ADJUST_LTV`, but those thresholds are published
+engineering choices rather than biological facts.
 
 ## 6. Data model and contract interfaces
 

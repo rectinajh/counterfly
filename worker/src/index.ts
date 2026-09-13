@@ -19,7 +19,9 @@ async function main() {
   const nonce = nonceArg ? BigInt(nonceArg.split("=")[1]) : 0n;
   const scenarioType =
     args.find((a) => a.startsWith("--scenario="))?.split("=")[1] ?? "BASE_REPLAY";
-  const graphArg = args.find((a) => a.startsWith("--graph="))?.split("=")[1] ?? "demo";
+  const graphArg =
+    args.find((a) => a.startsWith("--graph="))?.split("=")[1] ??
+    (isDemo ? "demo" : "full");
 
   const counterfactual: Counterfactual =
     scenarioType === "RATE_SHOCK"

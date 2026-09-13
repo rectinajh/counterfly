@@ -31,10 +31,21 @@ npm run demo:full --workspace @counterfly/worker
 npm run demo:full --workspace @counterfly/worker -- --scenario=RATE_SHOCK
 ```
 
-The real-data path is the reproducible "digital brain" substrate. Its abstract
-financial-feature mapping is an engineering choice and is not biologically
-validated, so treat the output as a reproducible stress-test signal rather than
-a claim that the connectome "understands" finance.
+The real-data path is the reproducible "digital brain" substrate. With the
+current tuning, `BASE_REPLAY` maps to `HOLD` and `RATE_SHOCK` maps to
+`ADJUST_LTV`. The abstract financial-feature mapping is an engineering choice
+and is not biologically validated, so treat the output as a reproducible
+stress-test signal rather than a claim that the connectome "understands"
+finance.
+
+To run the full read → replay pipeline on a real Sepolia transaction (the
+on-chain commit is skipped unless `PRIVATE_KEY` and `COUNTERFLY_ASC_ADDRESS`
+are set):
+
+```bash
+SEPOLIA_RPC=https://ethereum-sepolia-rpc.publicnode.com \
+  npm run run --workspace @counterfly/worker -- 0x<sepolia-tx-hash>
+```
 
 ## Real flow
 

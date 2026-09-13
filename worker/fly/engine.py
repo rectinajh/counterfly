@@ -22,6 +22,12 @@ ACTION_ADJUST_LTV = 1
 ACTION_LIQUIDATE = 2
 ACTION_PAY_OUT = 3
 
+# The real MaleCNS graph saturates its motor population under raw normalized
+# weights. A small recurrent gain keeps the readout in a sensitive regime so
+# counterfactual scenarios produce different risk actions.
+FULL_RECURRENT_GAIN = 0.003
+FULL_MAX_STEPS = 16
+
 
 def canonical(obj) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"))
@@ -228,10 +234,11 @@ def load_full_graph(spec: str) -> dict:
 def run_full_replay(graph: dict, scenario: dict, steps: int = 64, seed: int = 0) -> dict:
     import numpy as np
 
+    steps = min(steps, FULL_MAX_STEPS)
     neuron_count = graph["neuron_count"]
     pre_index = graph["pre_index"]
     post_index = graph["post_index"]
-    norm_weight = graph["norm_weight"]
+    norm_weight = graph["norm_weight"] * np.float32(FULL_RECURRENT_GAIN)
     input_ids = graph["input_ids"]
     output_ids = graph["output_ids"]
 
