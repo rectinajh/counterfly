@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "address": "tsx src/address.ts",
     "demo": "tsx src/index.ts --demo",
     "demo:full": "tsx src/index.ts --demo --graph=full",
     "run": "tsx src/index.ts",
