@@ -15,6 +15,7 @@ import {
 } from "./writeback";
 
 const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || "0.0.0.0";
 
 interface RunRequest {
   graph?: "demo" | "full";
@@ -294,6 +295,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Counterfly dashboard API listening on http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Counterfly dashboard API listening on http://${HOST}:${PORT}`);
 });

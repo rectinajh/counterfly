@@ -1,0 +1,16 @@
+[Unit]
+Description=Counterfly connectome worker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/app/counterfly/worker
+Environment=HOST=127.0.0.1
+Environment=PORT=8790
+ExecStart=/usr/bin/npm run serve
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
