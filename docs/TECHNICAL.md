@@ -235,6 +235,15 @@ The demo uses **Ethereum Sepolia** (`chainKey = 1`) because it matches the testn
 3. If the action crosses a published threshold, the ASC emits an event that the target-chain relayer consumes.
 4. The relayer submits the conditional instruction to the Sepolia action contract.
 
+The relayer is implemented as `worker/src/relay.ts`:
+
+```bash
+npm run relay --workspace @counterfly/worker -- --asset=0x<asset-id>
+```
+
+`HOLD` produces no action, `ADJUST_LTV` calls `RwaAction.adjustLtv`, and
+`LIQUIDATE` calls `RwaAction.requestLiquidation` on Sepolia.
+
 ## 5. Connectome simulation details
 
 Counterfly supports two replay substrates:

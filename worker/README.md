@@ -47,6 +47,18 @@ SEPOLIA_RPC=https://ethereum-sepolia-rpc.publicnode.com \
   npm run run --workspace @counterfly/worker -- 0x<sepolia-tx-hash>
 ```
 
+Once a decision is committed on CC3, the relayer can execute the cross-chain
+RWA action on Sepolia:
+
+```bash
+npm run relay --workspace @counterfly/worker -- --asset=0x<asset-id>
+```
+
+- `action = 0` (`HOLD`) does nothing.
+- `action = 1` calls `RwaAction.adjustLtv`.
+- `action = 2` calls `RwaAction.requestLiquidation`.
+- `action = 3` is reserved for parametric payouts (not wired in the demo).
+
 ## Real flow
 
 ```bash

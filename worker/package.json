@@ -6,6 +6,7 @@
     "address": "tsx src/address.ts",
     "demo": "tsx src/index.ts --demo",
     "demo:full": "tsx src/index.ts --demo --graph=full",
+    "relay": "tsx src/relay.ts",
     "run": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",

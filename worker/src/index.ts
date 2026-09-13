@@ -19,14 +19,21 @@ async function main() {
   const nonce = nonceArg ? BigInt(nonceArg.split("=")[1]) : 0n;
   const scenarioType =
     args.find((a) => a.startsWith("--scenario="))?.split("=")[1] ?? "BASE_REPLAY";
+  const magnitudeArg = args.find((a) => a.startsWith("--magnitude="));
+  const magnitude = magnitudeArg
+    ? parseFloat(magnitudeArg.split("=")[1])
+    : scenarioType === "RATE_SHOCK"
+      ? 0.2
+      : 0;
   const graphArg =
     args.find((a) => a.startsWith("--graph="))?.split("=")[1] ??
     (isDemo ? "demo" : "full");
 
-  const counterfactual: Counterfactual =
-    scenarioType === "RATE_SHOCK"
-      ? { type: "RATE_SHOCK", magnitude: 0.2, horizon: 12 }
-      : { type: "BASE_REPLAY", magnitude: 0, horizon: 12 };
+  const counterfactual: Counterfactual = {
+    type: scenarioType as Counterfactual["type"],
+    magnitude,
+    horizon: 12,
+  };
 
   let verified: VerifiedEvent;
   if (isDemo) {
