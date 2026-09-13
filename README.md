@@ -149,7 +149,8 @@ counterfly/
 │   ├── TECHNICAL.md
 │   └── Counterfly-Deck.pdf
 ├── assets/
-│   └── logo.svg
+│   ├── logo.png          # web/deck resolution
+│   └── logo-full.png     # full-resolution master
 ├── scripts/
 │   └── make_deck.py
 ├── contracts/
@@ -245,7 +246,7 @@ This project is an original submission for **BUIDL CTC 2026 Fall**, **RWA track*
 ## 10. Submission assets
 
 - Pitch deck: [docs/Counterfly-Deck.pdf](docs/Counterfly-Deck.pdf)
-- Logo: [assets/logo.svg](assets/logo.svg)
+- Logo: [assets/logo.png](assets/logo.png)
 - Demo video: TBD (single-click `Recommended demo` path)
 
 ---

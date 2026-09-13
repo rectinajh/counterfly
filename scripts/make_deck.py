@@ -38,7 +38,7 @@ MAGENTA = colors.HexColor("#ff4a82")
 AMBER = colors.HexColor("#ff9636")
 PANEL = colors.HexColor("#0d1528")
 PANEL_ALT = colors.HexColor("#111c36")
-BG = colors.HexColor("#080d1f")
+BG = colors.HexColor("#000000")
 
 
 def cover(canvas, doc):
@@ -50,40 +50,26 @@ def cover(canvas, doc):
     canvas.setLineWidth(1)
     canvas.rect(18 * mm, 16 * mm, A4[0] - 36 * mm, A4[1] - 32 * mm)
 
-    # Brand mark: simplified cyber fruit fly.
-    cx, cy = A4[0] / 2, A4[1] / 2 + 8 * mm
-    canvas.setFillColor(MAGENTA)
-    canvas.setStrokeColor(MAGENTA)
-    canvas.setLineWidth(1.4)
-    left_wing = canvas.beginPath()
-    left_wing.moveTo(cx - 34 * mm, cy)
-    left_wing.curveTo(cx - 54 * mm, cy - 34 * mm, cx - 34 * mm, cy - 54 * mm, cx, cy - 18 * mm)
-    left_wing.curveTo(cx - 20 * mm, cy - 28 * mm, cx - 24 * mm, cy - 8 * mm, cx, cy)
-    canvas.drawPath(left_wing, stroke=0, fill=1)
-    right_wing = canvas.beginPath()
-    right_wing.moveTo(cx + 34 * mm, cy)
-    right_wing.curveTo(cx + 54 * mm, cy - 34 * mm, cx + 34 * mm, cy - 54 * mm, cx, cy - 18 * mm)
-    right_wing.curveTo(cx + 20 * mm, cy - 28 * mm, cx + 24 * mm, cy - 8 * mm, cx, cy)
-    canvas.drawPath(right_wing, stroke=0, fill=1)
-
-    canvas.setFillColor(ACCENT)
-    canvas.ellipse(cx - 16 * mm, cy - 28 * mm, cx + 16 * mm, cy + 24 * mm, stroke=0, fill=1)
-    canvas.setFillColor(MAGENTA)
-    canvas.circle(cx - 6 * mm, cy + 8 * mm, 2.6 * mm, stroke=0, fill=1)
-    canvas.circle(cx + 6 * mm, cy + 8 * mm, 2.6 * mm, stroke=0, fill=1)
-    canvas.setFillColor(INK)
-    canvas.setFont("Courier-Bold", 30)
-    canvas.drawCentredString(cx, cy - 46 * mm, "COUNTERFLY")
-    canvas.setFont("Courier", 12)
-    canvas.setFillColor(MUTED)
-    canvas.drawCentredString(cx, cy - 53 * mm, "REPRODUCE THE FLY")
+    # Brand mark: official cyber fruit-fly logo.
+    cx = A4[0] / 2
+    logo_path = ROOT / "assets" / "logo.png"
+    if logo_path.exists():
+        logo_size = 96 * mm
+        canvas.drawImage(
+            str(logo_path),
+            cx - logo_size / 2,
+            A4[1] - 22 * mm - logo_size,
+            width=logo_size,
+            height=logo_size,
+            mask="auto",
+        )
 
     canvas.setFont("Helvetica-Bold", 18)
     canvas.setFillColor(INK)
-    canvas.drawCentredString(cx, 46 * mm, "A Counterfactual-History Engine for RWA Risk")
+    canvas.drawCentredString(cx, 52 * mm, "A Counterfactual-History Engine for RWA Risk")
     canvas.setFont("Helvetica", 11)
     canvas.setFillColor(MUTED)
-    canvas.drawCentredString(cx, 39 * mm, "BUIDL CTC 2026 Fall | RWA Track | Attestcoin Protocol")
+    canvas.drawCentredString(cx, 45 * mm, "BUIDL CTC 2026 Fall | RWA Track | Attestcoin Protocol")
     canvas.restoreState()
 
 

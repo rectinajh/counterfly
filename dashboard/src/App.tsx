@@ -203,6 +203,7 @@ export function App() {
     <main className="shell">
       <header className="hero">
         <div className="hero-copy">
+          <img className="brand-logo" src="/logo.png" alt="Counterfly logo" />
           <p className="eyebrow">Counterfly</p>
           <h1>Don&apos;t trust the appraiser — reproduce the fly.</h1>
           <p className="lede">

@@ -789,3 +789,23 @@ code {
   cursor: wait;
   opacity: 0.6;
 }
+
+.brand-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 20px;
+  object-fit: cover;
+  margin-bottom: 14px;
+  box-shadow: 0 0 26px rgba(0, 255, 255, 0.28), 0 0 46px rgba(255, 74, 130, 0.22);
+  animation: logoGlow 4s ease-in-out infinite;
+}
+
+@keyframes logoGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 22px rgba(0, 255, 255, 0.24), 0 0 40px rgba(255, 74, 130, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 34px rgba(0, 255, 255, 0.42), 0 0 60px rgba(255, 74, 130, 0.32);
+  }
+}
