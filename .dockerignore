@@ -1,0 +1,16 @@
+.git
+.vercel
+.env
+.env.*
+node_modules
+**/node_modules
+worker/fly/.venv
+worker/fly/data/raw
+**/__pycache__
+**/*.pyc
+contracts/artifacts
+contracts/cache
+contracts/typechain-types
+coverage
+dist
+dashboard/dist
