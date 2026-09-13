@@ -198,6 +198,12 @@ mock. The worker exposes:
 - `GET /api/state` — the most recently replayed decision, or `null` if the
   server has not run yet.
 - `POST /api/run` — runs a replay and returns the full state:
+- `GET /api/writeback?assetId=...` — reads the ASC decision and Sepolia
+  `RwaAction` state.
+- `POST /api/commit` — signs the latest replay decision with EIP-712 and commits
+  it to the `CounterflyASC` on CC3.
+- `POST /api/relay` — reads the committed decision and calls `adjustLtv` or
+  `requestLiquidation` on the Sepolia `RwaAction`.
 
 ```json
 {
@@ -225,6 +231,10 @@ npm run dev -w @counterfly/dashboard
 
 The frontend API base URL defaults to `http://localhost:8787` and can be
 overridden with `VITE_API_BASE_URL`.
+
+The dashboard has explicit **Commit to CC3** and **Relay to Sepolia** buttons.
+They call `/api/commit` and `/api/relay` so the replay, ASC commit, and
+cross-chain write-back remain auditable as separate steps.
 
 ## 4. Attestcoin integration details
 
@@ -273,6 +283,9 @@ npm run relay --workspace @counterfly/worker -- --asset=0x<asset-id>
 
 `HOLD` produces no action, `ADJUST_LTV` calls `RwaAction.adjustLtv`, and
 `LIQUIDATE` calls `RwaAction.requestLiquidation` on Sepolia.
+
+The same relayer path is exposed to the dashboard through
+`/api/commit` and `/api/relay`, implemented in `worker/src/writeback.ts`.
 
 ### 4.5 Native Attestcoin writability
 

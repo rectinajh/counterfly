@@ -34,6 +34,23 @@ export interface ReplayState {
   timestamp: string;
 }
 
+export interface WritebackStatus {
+  assetId: string | null;
+  configured: boolean;
+  committed: boolean;
+  commitTx?: string;
+  relayTx?: string;
+  ascDecision?: {
+    replayHash: string;
+    action: number;
+    newLtvBps: string;
+    nonce: string;
+  };
+  rwaLtvBps?: string;
+  rwaLiquidated?: boolean;
+  error?: string;
+}
+
 export const ACTION_LABELS: Record<ActionCode, string> = {
   0: "HOLD",
   1: "ADJUST LTV",

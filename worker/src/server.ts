@@ -8,6 +8,11 @@ import {
 } from "./scenario";
 import { runFly } from "./flyRunner";
 import { WRITABILITY_STATUS } from "./writability";
+import {
+  commitDecisionOnChain,
+  readWritebackStatus,
+  relayDecisionOnChain,
+} from "./writeback";
 
 const PORT = Number(process.env.PORT || 8787);
 
@@ -32,6 +37,32 @@ const REAL_EVENT = {
 };
 
 let latest: unknown = null;
+
+function latestDecision() {
+  if (!latest || typeof latest !== "object") {
+    return null;
+  }
+
+  const candidate = latest as {
+    assetId?: unknown;
+    replayHash?: unknown;
+    action?: unknown;
+  };
+
+  if (
+    typeof candidate.assetId !== "string" ||
+    typeof candidate.replayHash !== "string" ||
+    typeof candidate.action !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    assetId: candidate.assetId,
+    replayHash: candidate.replayHash,
+    action: candidate.action,
+  };
+}
 
 function graphInfo(graph: "demo" | "full") {
   if (graph === "demo") {
@@ -120,6 +151,64 @@ const server = createServer(async (req, res) => {
       }
       const body = JSON.parse(raw || "{}") as RunRequest;
       const result = await handleRun(body);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/writeback") {
+      const decision = latestDecision();
+      const assetId = url.searchParams.get("assetId") ?? decision?.assetId ?? null;
+      const status = await readWritebackStatus(assetId);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(status));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/commit") {
+      const decision = latestDecision();
+      if (!decision) {
+        res.writeHead(409, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Run a replay before committing." }));
+        return;
+      }
+
+      let raw = "";
+      for await (const chunk of req) {
+        raw += chunk;
+      }
+      const body = JSON.parse(raw || "{}") as {
+        assetId?: string;
+        replayHash?: string;
+        action?: number;
+      };
+
+      const result = await commitDecisionOnChain({
+        assetId: body.assetId ?? decision.assetId,
+        replayHash: body.replayHash ?? decision.replayHash,
+        action: typeof body.action === "number" ? body.action : decision.action,
+      });
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/relay") {
+      const decision = latestDecision();
+      if (!decision) {
+        res.writeHead(409, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Run a replay before relaying." }));
+        return;
+      }
+
+      let raw = "";
+      for await (const chunk of req) {
+        raw += chunk;
+      }
+      const body = JSON.parse(raw || "{}") as { assetId?: string };
+
+      const result = await relayDecisionOnChain(body.assetId ?? decision.assetId);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(result));
       return;

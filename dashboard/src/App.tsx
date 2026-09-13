@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { getState, runReplay } from "./api";
+import {
+  commitDecision,
+  getState,
+  getWriteback,
+  relayDecision,
+  runReplay,
+} from "./api";
 import {
   ACTION_LABELS,
   SCENARIO_LABELS,
   type GraphMode,
   type ReplayState,
   type ScenarioType,
+  type WritebackStatus,
 } from "./types";
 
 const SCENARIOS: ScenarioType[] = [
@@ -29,6 +36,23 @@ export function App() {
   const [magnitude, setMagnitude] = useState(DEFAULT_MAGNITUDE.BASE_REPLAY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [writeback, setWriteback] = useState<WritebackStatus | null>(null);
+  const [writebackLoading, setWritebackLoading] = useState(false);
+  const [writebackAction, setWritebackAction] = useState<
+    "commit" | "relay" | null
+  >(null);
+  const [writebackError, setWritebackError] = useState<string | null>(null);
+
+  const refreshWriteback = useCallback(async (assetId: string) => {
+    try {
+      const status = await getWriteback(assetId);
+      setWriteback(status);
+      setWritebackError(status.error ?? null);
+    } catch (cause) {
+      setWriteback(null);
+      setWritebackError(cause instanceof Error ? cause.message : "Write-back read failed");
+    }
+  }, []);
 
   const execute = useCallback(
     async (nextGraph: GraphMode, nextScenario: ScenarioType, nextMagnitude: number) => {
@@ -41,13 +65,15 @@ export function App() {
           magnitude: nextMagnitude,
         });
         setState(result);
+        setWriteback(null);
+        void refreshWriteback(result.assetId);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unknown replay error");
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [refreshWriteback],
   );
 
   useEffect(() => {
@@ -96,6 +122,48 @@ export function App() {
 
   const submit = () => {
     void execute(graph, scenario, magnitude);
+  };
+
+  const commit = async () => {
+    if (!state) {
+      return;
+    }
+
+    setWritebackLoading(true);
+    setWritebackAction("commit");
+    setWritebackError(null);
+    try {
+      await commitDecision(state.assetId, state.replayHash, state.action);
+      await refreshWriteback(state.assetId);
+    } catch (cause) {
+      setWritebackError(
+        cause instanceof Error ? cause.message : "Commit failed",
+      );
+    } finally {
+      setWritebackLoading(false);
+      setWritebackAction(null);
+    }
+  };
+
+  const relay = async () => {
+    if (!state) {
+      return;
+    }
+
+    setWritebackLoading(true);
+    setWritebackAction("relay");
+    setWritebackError(null);
+    try {
+      await relayDecision(state.assetId);
+      await refreshWriteback(state.assetId);
+    } catch (cause) {
+      setWritebackError(
+        cause instanceof Error ? cause.message : "Relay failed",
+      );
+    } finally {
+      setWritebackLoading(false);
+      setWritebackAction(null);
+    }
   };
 
   return (
@@ -224,6 +292,60 @@ export function App() {
               ]}
               highlight={ACTION_LABELS[state.action]}
             />
+          </section>
+
+          <section className="writeback">
+            <div className="panel-head">
+              <h2>4 · Write-back</h2>
+              <span>CC3 ASC → Sepolia RwaAction</span>
+            </div>
+
+            <div className="writeback-body">
+              <div className="writeback-status">
+                <div className="status-row">
+                  <span>ASC decision</span>
+                  <code>
+                    {writeback?.committed
+                      ? `committed ${shortHash(writeback.commitTx ?? "")}`
+                      : "not committed"}
+                  </code>
+                </div>
+                <div className="status-row">
+                  <span>Sepolia RWA</span>
+                  <code>
+                    {writeback?.rwaLiquidated
+                      ? "liquidated"
+                      : `LTV ${writeback?.rwaLtvBps ?? "—"} bps`}
+                  </code>
+                </div>
+              </div>
+
+              {writebackError ? (
+                <div className="writeback-error">{writebackError}</div>
+              ) : null}
+
+              <div className="writeback-actions">
+                <button
+                  className="run"
+                  onClick={commit}
+                  disabled={writebackLoading || !state}
+                >
+                  {writebackAction === "commit"
+                    ? "Committing…"
+                    : "Commit to CC3"}
+                </button>
+                <button
+                  onClick={relay}
+                  disabled={
+                    writebackLoading || !writeback?.committed || !state
+                  }
+                >
+                  {writebackAction === "relay"
+                    ? "Relaying…"
+                    : "Relay to Sepolia"}
+                </button>
+              </div>
+            </div>
           </section>
 
           <section className="hashes">
